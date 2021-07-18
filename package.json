@@ -1,0 +1,58 @@
+{
+  "version": "0.1.0",
+  "name": "stale-while-revalidate-cache",
+  "author": "JP Erasmus",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/stale-while-revalidate-cache.esm.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
+  "scripts": {
+    "start": "tsdx watch",
+    "build": "tsdx build",
+    "test": "tsdx test",
+    "test:watch": "tsdx test --watch",
+    "test:coverage": "tsdx test --coverage",
+    "lint": "tsdx lint src test types",
+    "lint:fix": "npm run lint -- --fix",
+    "prepare": "tsdx build",
+    "size": "size-limit",
+    "analyze": "size-limit --why"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "tsdx lint"
+    }
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "size-limit": [
+    {
+      "path": "dist/stale-while-revalidate-cache.cjs.production.min.js",
+      "limit": "10 KB"
+    },
+    {
+      "path": "dist/stale-while-revalidate-cache.esm.js",
+      "limit": "10 KB"
+    }
+  ],
+  "devDependencies": {
+    "@size-limit/preset-small-lib": "^5.0.1",
+    "husky": "^7.0.1",
+    "np": "^7.5.0",
+    "size-limit": "^5.0.1",
+    "tsdx": "^0.14.1",
+    "tslib": "^2.3.0",
+    "typescript": "^3.9.10"
+  }
+}
