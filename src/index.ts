@@ -1,5 +1,9 @@
 import { isFunction, parseConfig } from './helpers'
-import { EmitterMethods, getEmitter, extendWithEmitterMethods } from './event-emitter'
+import {
+  EmitterMethods,
+  getEmitter,
+  extendWithEmitterMethods,
+} from './event-emitter'
 import { Config } from '../types'
 
 export const EmitterEvents = {
@@ -10,12 +14,16 @@ export const EmitterEvents = {
   revalidate: 'revalidate',
 } as const
 
-
-type StaleWhileRevalidateCache = <ReturnValue extends unknown>(cacheKey: string | (() => string), fn: () => ReturnValue) => Promise<ReturnValue>
+type StaleWhileRevalidateCache = <ReturnValue extends unknown>(
+  cacheKey: string | (() => string),
+  fn: () => ReturnValue
+) => Promise<ReturnValue>
 
 type StaleWhileRevalidate = StaleWhileRevalidateCache & EmitterMethods
 
-export function createStaleWhileRevalidateCache(config: Config): StaleWhileRevalidate {
+export function createStaleWhileRevalidateCache(
+  config: Config
+): StaleWhileRevalidate {
   const {
     storage,
     minTimeToStale,
@@ -59,7 +67,13 @@ export function createStaleWhileRevalidateCache(config: Config): StaleWhileReval
     const cachedAge = now - Number(cachedTime)
 
     if (cachedAge > maxTimeToLive) {
-      emitter.emit(EmitterEvents.cacheExpired, { cacheKey, cachedAge, cachedTime, cachedValue, maxTimeToLive })
+      emitter.emit(EmitterEvents.cacheExpired, {
+        cacheKey,
+        cachedAge,
+        cachedTime,
+        cachedValue,
+        maxTimeToLive,
+      })
       cachedValue = null
     }
 

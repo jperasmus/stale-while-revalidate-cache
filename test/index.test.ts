@@ -201,7 +201,10 @@ describe('createStaleWhileRevalidateCache', () => {
     // Manually set the value in the cache
     await Promise.all([
       validConfig.storage.setItem(key, oldValue),
-      validConfig.storage.setItem(key + '_time', (Date.now() - 10000).toString()),
+      validConfig.storage.setItem(
+        key + '_time',
+        (Date.now() - 10000).toString()
+      ),
     ])
 
     const events: Record<any, any> = {}
