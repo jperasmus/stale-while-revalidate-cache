@@ -1,4 +1,4 @@
-import { createStaleWhileRevalidateCache } from '../src'
+import { createStaleWhileRevalidateCache, EmitterEvents } from '../src'
 import { mockedLocalStorage } from './test-helpers'
 
 const validConfig = {
@@ -20,20 +20,16 @@ describe('createStaleWhileRevalidateCache', () => {
   })
 
   it(`should create a stale while revalidate cache function`, () => {
-    const staleWhileRevalidateCache = createStaleWhileRevalidateCache(
-      validConfig
-    )
-    expect(staleWhileRevalidateCache).toEqual(expect.any(Function))
+    const swr = createStaleWhileRevalidateCache(validConfig)
+    expect(swr).toEqual(expect.any(Function))
   })
 
   it('should invoke given function and persist to storage if not already freshly cached', async () => {
-    const staleWhileRevalidateCache = createStaleWhileRevalidateCache(
-      validConfig
-    )
+    const swr = createStaleWhileRevalidateCache(validConfig)
     const key = 'key'
     const value = 'value'
     const fn = jest.fn(() => value)
-    const result = await staleWhileRevalidateCache(key, fn)
+    const result = await swr(key, fn)
 
     expect(result).toEqual(value)
     expect(fn).toHaveBeenCalledTimes(1)
@@ -46,7 +42,7 @@ describe('createStaleWhileRevalidateCache', () => {
   it('should invoke custom serializer and deserializer methods', async () => {
     const customSerialize = jest.fn(JSON.stringify)
     const customDeserialize = jest.fn(JSON.parse)
-    const staleWhileRevalidateCache = createStaleWhileRevalidateCache({
+    const swr = createStaleWhileRevalidateCache({
       ...validConfig,
       serialize: customSerialize,
       deserialize: customDeserialize,
@@ -54,7 +50,7 @@ describe('createStaleWhileRevalidateCache', () => {
     const key = 'key'
     const value = { value: 'value' }
     const fn = jest.fn(() => value)
-    const result = await staleWhileRevalidateCache(key, fn)
+    const result = await swr(key, fn)
 
     expect(result).toEqual(JSON.parse(JSON.stringify(value)))
     expect(fn).toHaveBeenCalledTimes(1)
@@ -65,7 +61,7 @@ describe('createStaleWhileRevalidateCache', () => {
 
   it('should not revalidate if the value is cached and still fresh', async () => {
     // Set minTimeToStale to 1 second so that the cache is fresh for second invocation
-    const staleWhileRevalidateCache = createStaleWhileRevalidateCache({
+    const swr = createStaleWhileRevalidateCache({
       ...validConfig,
       minTimeToStale: 1000,
     })
@@ -74,8 +70,8 @@ describe('createStaleWhileRevalidateCache', () => {
     const value2 = 'value 2'
     const fn1 = jest.fn(() => value1)
     const fn2 = jest.fn(() => value2)
-    const result1 = await staleWhileRevalidateCache(key, fn1)
-    const result2 = await staleWhileRevalidateCache(key, fn2)
+    const result1 = await swr(key, fn1)
+    const result2 = await swr(key, fn2)
 
     expect(result1).toEqual(value1)
     expect(result2).toEqual(value1)
@@ -85,7 +81,7 @@ describe('createStaleWhileRevalidateCache', () => {
 
   it('should return value from cache while revalidating the value in the background if cache is stale but not dead', async () => {
     // Explicitly set minTimeToStale to 0 and maxTimeToLive to Infinity so that the cache is always stale, but not dead for second invocation
-    const staleWhileRevalidateCache = createStaleWhileRevalidateCache({
+    const swr = createStaleWhileRevalidateCache({
       ...validConfig,
       minTimeToStale: 0,
       maxTimeToLive: Infinity,
@@ -95,8 +91,8 @@ describe('createStaleWhileRevalidateCache', () => {
     const value2 = 'value 2'
     const fn1 = jest.fn(() => value1)
     const fn2 = jest.fn(() => value2)
-    const result1 = await staleWhileRevalidateCache(key, fn1)
-    const result2 = await staleWhileRevalidateCache(key, fn2)
+    const result1 = await swr(key, fn1)
+    const result2 = await swr(key, fn2)
 
     expect(result1).toEqual(value1)
     expect(result2).toEqual(value1) // Still return value1 since it is from the cache
@@ -105,7 +101,7 @@ describe('createStaleWhileRevalidateCache', () => {
   })
 
   it('should not return a value from cache if it has expired', async () => {
-    const staleWhileRevalidateCache = createStaleWhileRevalidateCache({
+    const swr = createStaleWhileRevalidateCache({
       ...validConfig,
       minTimeToStale: 1000,
       maxTimeToLive: 2000,
@@ -119,14 +115,138 @@ describe('createStaleWhileRevalidateCache', () => {
     const originalDateNow = Date.now
 
     Date.now = jest.fn(() => now - 3000) // 3 seconds back in time
-    const result1 = await staleWhileRevalidateCache(key, fn1)
+    const result1 = await swr(key, fn1)
 
     Date.now = originalDateNow // Reset Date.now to original value so that cache for this key is expired
-    const result2 = await staleWhileRevalidateCache(key, fn2)
+    const result2 = await swr(key, fn2)
 
     expect(result1).toEqual(value1)
     expect(result2).toEqual(value2)
     expect(fn1).toHaveBeenCalledTimes(1)
     expect(fn2).toHaveBeenCalledTimes(1)
+  })
+
+  it(`should emit an '${EmitterEvents.invoke}' event when called`, async done => {
+    const swr = createStaleWhileRevalidateCache(validConfig)
+    const key = 'key'
+    const value = 'value'
+    const fn = jest.fn(() => value)
+
+    swr.once(EmitterEvents.invoke).then(payload => {
+      expect(payload).toEqual({
+        cacheKey: key,
+        fn,
+      })
+      done()
+    })
+
+    await swr(key, fn)
+  })
+
+  it(`should emit a '${EmitterEvents.cacheHit}' event when the value is found in the cache`, async done => {
+    const swr = createStaleWhileRevalidateCache({
+      ...validConfig,
+      minTimeToStale: 10000,
+    })
+    const key = () => 'key'
+    const timeKey = 'key_time'
+    const value = 'value'
+    const fn = jest.fn(() => value)
+
+    // Manually set the value in the cache
+    await Promise.all([
+      validConfig.storage.setItem(key(), value),
+      validConfig.storage.setItem(timeKey, Date.now().toString()),
+    ])
+
+    swr.once(EmitterEvents.cacheHit).then(payload => {
+      expect(payload).toEqual({
+        cacheKey: key,
+        cachedValue: value,
+      })
+      done()
+    })
+
+    await swr(key, fn)
+  })
+
+  it(`should emit a '${EmitterEvents.cacheMiss}' event when the value is not found in the cache`, async done => {
+    const swr = createStaleWhileRevalidateCache(validConfig)
+    const key = () => 'key'
+    const value = 'value'
+    const fn = jest.fn(() => value)
+
+    swr.once(EmitterEvents.cacheMiss).then(payload => {
+      expect(payload).toEqual({
+        cacheKey: key,
+        fn,
+      })
+      done()
+    })
+
+    await swr(key, fn)
+  })
+
+  it(`should emit '${EmitterEvents.cacheHit}' and '${EmitterEvents.revalidate}' events when the cache is stale but not expired`, async () => {
+    const swr = createStaleWhileRevalidateCache({
+      ...validConfig,
+      minTimeToStale: 0,
+      maxTimeToLive: Infinity,
+    })
+    const key = 'key'
+    const oldValue = 'old value'
+    const value = 'value'
+    const fn = jest.fn(() => value)
+
+    // Manually set the value in the cache
+    await Promise.all([
+      validConfig.storage.setItem(key, oldValue),
+      validConfig.storage.setItem(key + '_time', (Date.now() - 10000).toString()),
+    ])
+
+    const events: Record<any, any> = {}
+
+    swr.onAny((event: any, payload) => {
+      events[event] = payload
+    })
+
+    await swr(key, fn)
+
+    expect(events).toMatchInlineSnapshot(`
+      Object {
+        "cacheHit": Object {
+          "cacheKey": "key",
+          "cachedValue": "old value",
+        },
+        "invoke": Object {
+          "cacheKey": "key",
+          "fn": [MockFunction] {
+            "calls": Array [
+              Array [],
+            ],
+            "results": Array [
+              Object {
+                "type": "return",
+                "value": "value",
+              },
+            ],
+          },
+        },
+        "revalidate": Object {
+          "cacheKey": "key",
+          "fn": [MockFunction] {
+            "calls": Array [
+              Array [],
+            ],
+            "results": Array [
+              Object {
+                "type": "return",
+                "value": "value",
+              },
+            ],
+          },
+        },
+      }
+    `)
   })
 })
