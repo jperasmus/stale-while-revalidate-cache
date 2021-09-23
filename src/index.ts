@@ -50,13 +50,14 @@ export function createStaleWhileRevalidateCache(
 
         const result = await fn()
 
-        await Promise.all([
-          storage.setItem(key, serialize(result)),
-          storage.setItem(timeKey, Date.now().toString()),
-        ])
+        // Intentionally persisting asynchronously and not blocking since there is
+        // in any case a chance for a race condition to occur when using an external
+        // persistence store, like Redis, with multiple consumers. The impact is low.
+        storage.setItem(key, serialize(result))
+        storage.setItem(timeKey, Date.now().toString())
 
         return result
-      } catch(error) {
+      } catch (error) {
         emitter.emit(EmitterEvents.revalidateFailed, { cacheKey, fn, error })
         throw error
       }

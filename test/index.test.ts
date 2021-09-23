@@ -100,7 +100,7 @@ describe('createStaleWhileRevalidateCache', () => {
     expect(fn2).toHaveBeenCalledTimes(1) // But invoke the function to revalidate the value in the background
   })
 
-  it(`should emit an '${EmitterEvents.revalidateFailed}' event if the cache is stale but not dead and the revalidation request fails`, async (done) => {
+  it(`should emit an '${EmitterEvents.revalidateFailed}' event if the cache is stale but not dead and the revalidation request fails`, async done => {
     // Explicitly set minTimeToStale to 0 and maxTimeToLive to Infinity so that the cache is always stale, but not dead for second invocation
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,
@@ -285,5 +285,24 @@ describe('createStaleWhileRevalidateCache', () => {
         },
       }
     `)
+  })
+
+  it(`should throw an error if reading from the storage fails`, async () => {
+    const swr = createStaleWhileRevalidateCache({
+      ...validConfig,
+      storage: {
+        ...validConfig.storage,
+        getItem() {
+          throw new Error('storage read error')
+        },
+      },
+    })
+    const key = 'cache-read-error-example'
+    const value = 'value'
+    const fn = jest.fn(() => value)
+
+    expect(() => swr(key, fn)).rejects.toThrowErrorMatchingInlineSnapshot(
+      `"storage read error"`
+    )
   })
 })
