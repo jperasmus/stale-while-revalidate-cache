@@ -100,6 +100,40 @@ describe('createStaleWhileRevalidateCache', () => {
     expect(fn2).toHaveBeenCalledTimes(1) // But invoke the function to revalidate the value in the background
   })
 
+  it(`should emit an '${EmitterEvents.revalidateFailed}' event if the cache is stale but not dead and the revalidation request fails`, async (done) => {
+    // Explicitly set minTimeToStale to 0 and maxTimeToLive to Infinity so that the cache is always stale, but not dead for second invocation
+    const swr = createStaleWhileRevalidateCache({
+      ...validConfig,
+      minTimeToStale: 0,
+      maxTimeToLive: Infinity,
+    })
+    const key = 'stale-example'
+    const value1 = 'value 1'
+    const error = new Error('beep boop')
+    const fn1 = jest.fn(() => value1)
+    const fn2 = jest.fn(() => {
+      throw error
+    })
+
+    const result1 = await swr(key, fn1)
+    expect(result1).toEqual(value1)
+
+    swr.once(EmitterEvents.revalidateFailed).then(payload => {
+      expect(payload).toEqual({
+        cacheKey: key,
+        fn: fn2,
+        error,
+      })
+      done()
+    })
+
+    const result2 = await swr(key, fn2)
+
+    expect(result2).toEqual(value1) // Still return value1 since it is from the cache
+    expect(fn1).toHaveBeenCalledTimes(1)
+    expect(fn2).toHaveBeenCalledTimes(1) // But invoke the function to revalidate the value in the background
+  })
+
   it('should not return a value from cache if it has expired', async () => {
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,

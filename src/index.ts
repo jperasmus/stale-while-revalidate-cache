@@ -12,6 +12,7 @@ export const EmitterEvents = {
   cacheMiss: 'cacheMiss',
   invoke: 'invoke',
   revalidate: 'revalidate',
+  revalidateFailed: 'revalidateFailed',
 } as const
 
 type StaleWhileRevalidateCache = <ReturnValue extends unknown>(
@@ -44,16 +45,21 @@ export function createStaleWhileRevalidateCache(
     const timeKey = `${key}_time`
 
     async function revalidate() {
-      emitter.emit(EmitterEvents.revalidate, { cacheKey, fn })
+      try {
+        emitter.emit(EmitterEvents.revalidate, { cacheKey, fn })
 
-      const result = await fn()
+        const result = await fn()
 
-      await Promise.all([
-        storage.setItem(key, serialize(result)),
-        storage.setItem(timeKey, Date.now().toString()),
-      ])
+        await Promise.all([
+          storage.setItem(key, serialize(result)),
+          storage.setItem(timeKey, Date.now().toString()),
+        ])
 
-      return result
+        return result
+      } catch(error) {
+        emitter.emit(EmitterEvents.revalidateFailed, { cacheKey, fn, error })
+        throw error
+      }
     }
 
     let [cachedValue, cachedTime] = await Promise.all([
@@ -81,7 +87,9 @@ export function createStaleWhileRevalidateCache(
       emitter.emit(EmitterEvents.cacheHit, { cacheKey, cachedValue })
 
       if (cachedAge >= minTimeToStale) {
-        revalidate()
+        // Non-blocking so that revalidation runs while stale cache data is returned
+        // Error handled in `revalidate` by emitting an event, so only need a no-op here
+        revalidate().catch(() => {})
       }
 
       return cachedValue as ReturnValue
