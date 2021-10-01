@@ -11,6 +11,7 @@ describe('isFunction', () => {
     expect(isFunction(() => {})).toBe(true)
     expect(isFunction(function() {})).toBe(true)
     expect(isFunction(async function() {})).toBe(true)
+    // eslint-disable-next-line no-new-func
     expect(isFunction(new Function())).toBe(true)
   })
 
@@ -28,6 +29,7 @@ describe('isFunction', () => {
 describe('isPlainObject', () => {
   it('should return true if the given value is a plain object', () => {
     expect(isPlainObject({})).toBe(true)
+    // eslint-disable-next-line no-new-object
     expect(isPlainObject(new Object())).toBe(true)
   })
 
@@ -40,6 +42,7 @@ describe('isPlainObject', () => {
     expect(isPlainObject([])).toBe(false)
     expect(isPlainObject(() => {})).toBe(false)
     expect(isPlainObject(async function() {})).toBe(false)
+    // eslint-disable-next-line no-new-func
     expect(isPlainObject(new Function())).toBe(false)
   })
 })
@@ -68,6 +71,7 @@ describe('parseConfig', () => {
       Symbol(),
       [],
       async function() {},
+      // eslint-disable-next-line no-new-func
       new Function(),
     ]
 
@@ -87,6 +91,7 @@ describe('parseConfig', () => {
       { storage: Symbol() },
       { storage: [] },
       { storage: async function() {} },
+      // eslint-disable-next-line no-new-func
       { storage: new Function() },
       { storage: { getItem: null, setItem: null } },
     ]

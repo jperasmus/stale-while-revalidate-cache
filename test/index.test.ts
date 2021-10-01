@@ -287,7 +287,7 @@ describe('createStaleWhileRevalidateCache', () => {
     `)
   })
 
-  it(`should emit '${EmitterEvents.cacheGetFailed}' event when an error is thrown when retrieving from the storage and continue as-if cache is expired`, async (done) => {
+  it(`should emit '${EmitterEvents.cacheGetFailed}' event when an error is thrown when retrieving from the storage and continue as-if cache is expired`, async done => {
     const error = new Error('storage read error')
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,
@@ -317,7 +317,7 @@ describe('createStaleWhileRevalidateCache', () => {
     expect(result).toEqual(value)
   })
 
-  it(`should emit '${EmitterEvents.cacheSetFailed}' event when an error is thrown when persisting to the storage`, async (done) => {
+  it(`should emit '${EmitterEvents.cacheSetFailed}' event when an error is thrown when persisting to the storage`, async done => {
     const error = new Error('storage persist error')
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,
