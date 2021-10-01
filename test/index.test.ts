@@ -287,22 +287,63 @@ describe('createStaleWhileRevalidateCache', () => {
     `)
   })
 
-  it(`should throw an error if reading from the storage fails`, async () => {
+  it(`should emit '${EmitterEvents.cacheGetFailed}' event when an error is thrown when retrieving from the storage and continue as-if cache is expired`, async (done) => {
+    const error = new Error('storage read error')
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,
       storage: {
         ...validConfig.storage,
         getItem() {
-          throw new Error('storage read error')
+          throw error
         },
       },
+      minTimeToStale: 0,
+      maxTimeToLive: Infinity,
     })
-    const key = 'cache-read-error-example'
+    const key = () => 'storage-get-error'
     const value = 'value'
     const fn = jest.fn(() => value)
 
-    expect(() => swr(key, fn)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `"storage read error"`
-    )
+    swr.once(EmitterEvents.cacheGetFailed).then(payload => {
+      expect(payload).toEqual({
+        cacheKey: key,
+        error,
+      })
+      done()
+    })
+
+    const result = await swr(key, fn)
+
+    expect(result).toEqual(value)
+  })
+
+  it(`should emit '${EmitterEvents.cacheSetFailed}' event when an error is thrown when persisting to the storage`, async (done) => {
+    const error = new Error('storage persist error')
+    const swr = createStaleWhileRevalidateCache({
+      ...validConfig,
+      storage: {
+        ...validConfig.storage,
+        setItem() {
+          throw error
+        },
+      },
+      minTimeToStale: 0,
+      maxTimeToLive: Infinity,
+    })
+    const key = () => 'storage-set-error'
+    const value = 'value'
+    const fn = jest.fn(() => value)
+
+    swr.once(EmitterEvents.cacheSetFailed).then(payload => {
+      expect(payload).toEqual({
+        cacheKey: key,
+        error,
+      })
+      done()
+    })
+
+    const result = await swr(key, fn)
+
+    expect(result).toEqual(value)
   })
 })

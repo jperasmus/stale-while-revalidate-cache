@@ -8,8 +8,10 @@ import { Config } from '../types'
 
 export const EmitterEvents = {
   cacheHit: 'cacheHit',
-  cacheExpired: 'cacheExpired',
   cacheMiss: 'cacheMiss',
+  cacheExpired: 'cacheExpired',
+  cacheGetFailed: 'cacheGetFailed',
+  cacheSetFailed: 'cacheSetFailed',
   invoke: 'invoke',
   revalidate: 'revalidate',
   revalidateFailed: 'revalidateFailed',
@@ -44,6 +46,47 @@ export function createStaleWhileRevalidateCache(
     const key = isFunction(cacheKey) ? String(cacheKey()) : String(cacheKey)
     const timeKey = `${key}_time`
 
+    async function retrieveCachedValue() {
+      try {
+        let [cachedValue, cachedTime] = await Promise.all([
+          storage.getItem(key),
+          storage.getItem(timeKey),
+        ])
+
+        cachedValue = deserialize(cachedValue)
+
+        const now = Date.now()
+        const cachedAge = now - Number(cachedTime)
+
+        if (cachedAge > maxTimeToLive) {
+          emitter.emit(EmitterEvents.cacheExpired, {
+            cacheKey,
+            cachedAge,
+            cachedTime,
+            cachedValue,
+            maxTimeToLive,
+          })
+          cachedValue = null
+        }
+
+        return { cachedValue, cachedAge }
+      } catch (error) {
+        emitter.emit(EmitterEvents.cacheGetFailed, { cacheKey, error })
+        return { cachedValue: null, cachedAge: 0 }
+      }
+    }
+
+    async function persistValue(result: ReturnValue) {
+      try {
+        await Promise.all([
+          storage.setItem(key, serialize(result)),
+          storage.setItem(timeKey, Date.now().toString()),
+        ])
+      } catch (error) {
+        emitter.emit(EmitterEvents.cacheSetFailed, { cacheKey, error })
+      }
+    }
+
     async function revalidate() {
       try {
         emitter.emit(EmitterEvents.revalidate, { cacheKey, fn })
@@ -53,8 +96,7 @@ export function createStaleWhileRevalidateCache(
         // Intentionally persisting asynchronously and not blocking since there is
         // in any case a chance for a race condition to occur when using an external
         // persistence store, like Redis, with multiple consumers. The impact is low.
-        storage.setItem(key, serialize(result))
-        storage.setItem(timeKey, Date.now().toString())
+        persistValue(result)
 
         return result
       } catch (error) {
@@ -63,26 +105,7 @@ export function createStaleWhileRevalidateCache(
       }
     }
 
-    let [cachedValue, cachedTime] = await Promise.all([
-      storage.getItem(key),
-      storage.getItem(timeKey),
-    ])
-
-    cachedValue = deserialize(cachedValue)
-
-    const now = Date.now()
-    const cachedAge = now - Number(cachedTime)
-
-    if (cachedAge > maxTimeToLive) {
-      emitter.emit(EmitterEvents.cacheExpired, {
-        cacheKey,
-        cachedAge,
-        cachedTime,
-        cachedValue,
-        maxTimeToLive,
-      })
-      cachedValue = null
-    }
+    const { cachedValue, cachedAge } = await retrieveCachedValue()
 
     if (cachedValue) {
       emitter.emit(EmitterEvents.cacheHit, { cacheKey, cachedValue })

@@ -107,6 +107,14 @@ Emitted when a fresh or stale value is found in the cache. It will not emit for 
 
 Emitted when no value is found in the cache for the given key. When this happens, the returned value is what is returned from your given task function.
 
+#### cacheGetFailed
+
+Emitted when an error occurs while trying to retrieve a value from the given `storage`, ie. if `storage.getItem()` throws.
+
+#### cacheSetFailed
+
+Emitted when an error occurs while trying to persist a value to the given `storage`, ie. if `storage.setItem()` throws. Cache persistence happens asynchronously, so you can't expect this error to bubble up to the main revalidate function. If you want to be aware of this error, you have to subscribe to this event.
+
 #### cacheExpired
 
 Emitted when a value was found in the cache, but it has expired. The payload will include the old `cachedValue` for your own reference. This cached value will not be used, but the task function will be invoked and waited for to provide the response.
@@ -114,6 +122,10 @@ Emitted when a value was found in the cache, but it has expired. The payload wil
 #### revalidate
 
 Emitted whenever the task function is invoked. It will always be invoked except when the cache is considered fresh, NOT stale or expired.
+
+#### revalidateFailed
+
+Emitted whenever the revalidate function failed, whether that is synchronously when the cache is bypassed or asynchronously.
 
 ### Example
 
@@ -147,6 +159,15 @@ swr.onAny((event, payload) => {
 
     case EmitterEvents.cacheExpired:
       metrics.countCacheExpirations(payload)
+      break;
+
+    case EmitterEvents.cacheGetFailed:
+    case EmitterEvents.cacheSetFailed:
+      metrics.countCacheErrors(payload)
+      break;
+
+    case EmitterEvents.revalidateFailed:
+      metrics.countRevalidationFailures(payload)
       break;
 
     case EmitterEvents.revalidate:
