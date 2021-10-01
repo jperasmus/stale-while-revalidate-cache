@@ -56,9 +56,15 @@ const { createStaleWhileRevalidateCache } = require('stale-while-revalidate-cach
 const redis = new Redis()
 
 const storage = {
-  getItem: redis.get,
-  setItem: redis.set,
-}
+    async getItem(cacheKey: string) {
+      return redis.get(cacheKey)
+    },
+    async setItem(cacheKey: string, cacheValue: any) {
+      // Use px or ex depending on whether you use milliseconds or seconds for your ttl
+      // It is recommended to set ttl to your maxTimeToLive (it has to be more than it)
+      await redis.set(cacheKey, cacheValue, 'px', ttl)
+    },
+  }
 
 const swr = createStaleWhileRevalidateCache({
   storage
