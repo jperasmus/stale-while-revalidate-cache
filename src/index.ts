@@ -116,7 +116,11 @@ export function createStaleWhileRevalidateCache(
       emitter.emit(EmitterEvents.cacheHit, { cacheKey, cachedValue })
 
       if (cachedAge >= minTimeToStale) {
-        emitter.emit(EmitterEvents.cacheStale, { cacheKey, cachedValue, cachedAge })
+        emitter.emit(EmitterEvents.cacheStale, {
+          cacheKey,
+          cachedValue,
+          cachedAge,
+        })
         // Non-blocking so that revalidation runs while stale cache data is returned
         // Error handled in `revalidate` by emitting an event, so only need a no-op here
         revalidate().catch(() => {})
