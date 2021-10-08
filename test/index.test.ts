@@ -221,7 +221,7 @@ describe('createStaleWhileRevalidateCache', () => {
     await swr(key, fn)
   })
 
-  it(`should emit '${EmitterEvents.cacheHit}' and '${EmitterEvents.revalidate}' events when the cache is stale but not expired`, async () => {
+  it(`should emit '${EmitterEvents.cacheHit}', '${EmitterEvents.cacheStale}' and '${EmitterEvents.revalidate}' events when the cache is stale but not expired`, async () => {
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,
       minTimeToStale: 0,
@@ -253,6 +253,11 @@ describe('createStaleWhileRevalidateCache', () => {
       Object {
         "cacheHit": Object {
           "cacheKey": "key",
+          "cachedValue": "old value",
+        },
+        "cacheStale": Object {
+          "cacheKey": "key",
+          "cachedAge": 10000,
           "cachedValue": "old value",
         },
         "invoke": Object {

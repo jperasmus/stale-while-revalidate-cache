@@ -3,6 +3,11 @@ import { Config } from '../types'
 export const isFunction = (value: any): value is Function =>
   typeof value === 'function'
 
+type Nil = null | undefined
+
+export const isNil = (value: any): value is Nil =>
+  typeof value === 'undefined' || value === null
+
 export const isPlainObject = (value: any) =>
   !!value && typeof value === 'object' && !Array.isArray(value)
 

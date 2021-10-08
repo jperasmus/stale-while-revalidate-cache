@@ -1,4 +1,4 @@
-import { isFunction, parseConfig } from './helpers'
+import { isFunction, isNil, parseConfig } from './helpers'
 import {
   EmitterMethods,
   getEmitter,
@@ -9,6 +9,7 @@ import { Config } from '../types'
 export const EmitterEvents = {
   cacheHit: 'cacheHit',
   cacheMiss: 'cacheMiss',
+  cacheStale: 'cacheStale',
   cacheExpired: 'cacheExpired',
   cacheGetFailed: 'cacheGetFailed',
   cacheSetFailed: 'cacheSetFailed',
@@ -54,6 +55,10 @@ export function createStaleWhileRevalidateCache(
         ])
 
         cachedValue = deserialize(cachedValue)
+
+        if (isNil(cachedValue)) {
+          return { cachedValue: null, cachedAge: 0 }
+        }
 
         const now = Date.now()
         const cachedAge = now - Number(cachedTime)
@@ -107,10 +112,11 @@ export function createStaleWhileRevalidateCache(
 
     const { cachedValue, cachedAge } = await retrieveCachedValue()
 
-    if (cachedValue) {
+    if (!isNil(cachedValue)) {
       emitter.emit(EmitterEvents.cacheHit, { cacheKey, cachedValue })
 
       if (cachedAge >= minTimeToStale) {
+        emitter.emit(EmitterEvents.cacheStale, { cacheKey, cachedValue, cachedAge })
         // Non-blocking so that revalidation runs while stale cache data is returned
         // Error handled in `revalidate` by emitting an event, so only need a no-op here
         revalidate().catch(() => {})

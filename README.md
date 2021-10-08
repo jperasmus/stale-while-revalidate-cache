@@ -99,7 +99,7 @@ To continue with the object value in `window.localStorage` example, you can set 
 
 The cache helper method returned from the `createStaleWhileRevalidateCache` function is a fully functional event emitter that is an instance of the excellent [Emittery](https://www.npmjs.com/package/emittery) package. Please look at the linked package's documentation to see all the available methods.
 
-The following events will be emitted when appropriate during the lifetime of the cache:
+The following events will be emitted when appropriate during the lifetime of the cache (all events will always include the `cacheKey` in its payload along with other event-specific properties):
 
 #### invoke
 
@@ -109,9 +109,17 @@ Emitted when the cache helper is invoked with the cache key and function as payl
 
 Emitted when a fresh or stale value is found in the cache. It will not emit for expired cache values. When this event is emitted, this is the value that the helper will return, regardless of whether it will be revalidated or not.
 
+#### cacheExpired
+
+Emitted when a value was found in the cache, but it has expired. The payload will include the old `cachedValue` for your own reference. This cached value will not be used, but the task function will be invoked and waited for to provide the response.
+
+#### cacheStale
+
+Emitted when a value was found in the cache, but it is older than the allowed `minTimeToStale` and it has NOT expired. The payload will include the stale `cachedValue` and `cachedAge` for your own reference.
+
 #### cacheMiss
 
-Emitted when no value is found in the cache for the given key. When this happens, the returned value is what is returned from your given task function.
+Emitted when no value is found in the cache for the given key OR the cache has expired. This event can be used to capture the total number of cache misses. When this happens, the returned value is what is returned from your given task function.
 
 #### cacheGetFailed
 
@@ -120,10 +128,6 @@ Emitted when an error occurs while trying to retrieve a value from the given `st
 #### cacheSetFailed
 
 Emitted when an error occurs while trying to persist a value to the given `storage`, ie. if `storage.setItem()` throws. Cache persistence happens asynchronously, so you can't expect this error to bubble up to the main revalidate function. If you want to be aware of this error, you have to subscribe to this event.
-
-#### cacheExpired
-
-Emitted when a value was found in the cache, but it has expired. The payload will include the old `cachedValue` for your own reference. This cached value will not be used, but the task function will be invoked and waited for to provide the response.
 
 #### revalidate
 
