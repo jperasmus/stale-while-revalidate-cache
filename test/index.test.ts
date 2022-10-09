@@ -232,12 +232,16 @@ describe('createStaleWhileRevalidateCache', () => {
     const value = 'value'
     const fn = jest.fn(() => value)
 
+    const now = Date.now()
+    const originalDateNow = Date.now
+    Date.now = jest.fn(() => now)
+
     // Manually set the value in the cache
     await Promise.all([
       validConfig.storage.setItem(key, oldValue),
       validConfig.storage.setItem(
         key + '_time',
-        (Date.now() - 10000).toString()
+        (now - 10000).toString()
       ),
     ])
 
@@ -248,6 +252,8 @@ describe('createStaleWhileRevalidateCache', () => {
     })
 
     await swr(key, fn)
+
+    Date.now = originalDateNow
 
     expect(events).toMatchInlineSnapshot(`
       Object {
