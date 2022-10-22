@@ -1,14 +1,11 @@
-import {
-  isFunction,
-  isPlainObject, parseConfig, passThrough
-} from './helpers'
+import { isFunction, isPlainObject, parseConfig, passThrough } from './helpers'
 import { mockedLocalStorage } from './test-helpers'
 
 describe('isFunction', () => {
   it('should return true if the given value is a function', () => {
     expect(isFunction(() => {})).toBe(true)
-    expect(isFunction(function() {})).toBe(true)
-    expect(isFunction(async function() {})).toBe(true)
+    expect(isFunction(function () {})).toBe(true)
+    expect(isFunction(async function () {})).toBe(true)
     // eslint-disable-next-line no-new-func
     expect(isFunction(new Function())).toBe(true)
   })
@@ -39,7 +36,7 @@ describe('isPlainObject', () => {
     expect(isPlainObject(Symbol())).toBe(false)
     expect(isPlainObject([])).toBe(false)
     expect(isPlainObject(() => {})).toBe(false)
-    expect(isPlainObject(async function() {})).toBe(false)
+    expect(isPlainObject(async function () {})).toBe(false)
     // eslint-disable-next-line no-new-func
     expect(isPlainObject(new Function())).toBe(false)
   })
@@ -68,13 +65,13 @@ describe('parseConfig', () => {
       '',
       Symbol(),
       [],
-      async function() {},
+      async function () {},
       // eslint-disable-next-line no-new-func
       new Function(),
     ]
 
-    invalidConfigs.forEach(invalidConfig => {
-      // @ts-expect-error
+    invalidConfigs.forEach((invalidConfig) => {
+      // @ts-expect-error explicitly calling function with invalid config
       expect(() => parseConfig(invalidConfig)).toThrowError()
     })
   })
@@ -88,14 +85,14 @@ describe('parseConfig', () => {
       { storage: '' },
       { storage: Symbol() },
       { storage: [] },
-      { storage: async function() {} },
+      { storage: async function () {} },
       // eslint-disable-next-line no-new-func
       { storage: new Function() },
       { storage: { getItem: null, setItem: null } },
     ]
 
-    invalidConfigs.forEach(invalidConfig => {
-      // @ts-expect-error
+    invalidConfigs.forEach((invalidConfig) => {
+      // @ts-expect-error explicitly calling function with invalid config
       expect(() => parseConfig(invalidConfig)).toThrowError()
     })
   })
@@ -106,7 +103,7 @@ describe('parseConfig', () => {
       { storage: mockedLocalStorage, minTimeToStale: 10, maxTimeToLive: 10 },
     ]
 
-    invalidConfigs.forEach(invalidConfig => {
+    invalidConfigs.forEach((invalidConfig) => {
       expect(() => parseConfig(invalidConfig)).toThrowError()
     })
   })

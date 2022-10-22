@@ -1,6 +1,8 @@
 import { Config } from '../types'
 
-export const isFunction = (value: any): value is Function =>
+type Fn = (...args: any[]) => any
+
+export const isFunction = (value: any): value is Fn =>
   typeof value === 'function'
 
 type Nil = null | undefined

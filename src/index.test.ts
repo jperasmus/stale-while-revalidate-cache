@@ -15,7 +15,7 @@ describe('createStaleWhileRevalidateCache', () => {
   })
 
   it(`should throw an error if the config is missing`, () => {
-    // @ts-expect-error
+    // @ts-expect-error calling function without config
     expect(() => createStaleWhileRevalidateCache()).toThrow()
   })
 

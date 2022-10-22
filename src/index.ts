@@ -1,10 +1,10 @@
-import { isFunction, isNil, parseConfig } from './helpers'
+import { Config } from '../types'
 import {
   EmitterMethods,
-  getEmitter,
   extendWithEmitterMethods,
+  getEmitter,
 } from './event-emitter'
-import { Config } from '../types'
+import { isFunction, isNil, parseConfig } from './helpers'
 
 export const EmitterEvents = {
   cacheHit: 'cacheHit',
@@ -18,7 +18,7 @@ export const EmitterEvents = {
   revalidateFailed: 'revalidateFailed',
 } as const
 
-type StaleWhileRevalidateCache = <ReturnValue extends unknown>(
+type StaleWhileRevalidateCache = <ReturnValue>(
   cacheKey: string | (() => string),
   fn: () => ReturnValue
 ) => Promise<ReturnValue>
@@ -28,17 +28,12 @@ type StaleWhileRevalidate = StaleWhileRevalidateCache & EmitterMethods
 export function createStaleWhileRevalidateCache(
   config: Config
 ): StaleWhileRevalidate {
-  const {
-    storage,
-    minTimeToStale,
-    maxTimeToLive,
-    serialize,
-    deserialize,
-  } = parseConfig(config)
+  const { storage, minTimeToStale, maxTimeToLive, serialize, deserialize } =
+    parseConfig(config)
 
   const emitter = getEmitter()
 
-  async function staleWhileRevalidate<ReturnValue extends unknown>(
+  async function staleWhileRevalidate<ReturnValue>(
     cacheKey: string | (() => string),
     fn: () => ReturnValue
   ): Promise<ReturnValue> {
@@ -49,6 +44,7 @@ export function createStaleWhileRevalidateCache(
 
     async function retrieveCachedValue() {
       try {
+        // eslint-disable-next-line prefer-const
         let [cachedValue, cachedTime] = await Promise.all([
           storage.getItem(key),
           storage.getItem(timeKey),
