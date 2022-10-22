@@ -1,9 +1,7 @@
 import {
   isFunction,
-  isPlainObject,
-  passThrough,
-  parseConfig,
-} from '../src/helpers'
+  isPlainObject, parseConfig, passThrough
+} from './helpers'
 import { mockedLocalStorage } from './test-helpers'
 
 describe('isFunction', () => {
