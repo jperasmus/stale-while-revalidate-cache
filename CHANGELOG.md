@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0] - 2022-10-09
+...
+
+## [2.0.0] - 2022-10-28
 
 ### Removed
 
@@ -16,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Updated dependencies with potential security vulnerabilities
+
+### Changed
+
+- Internal build tools from the unmaintained TSDX to Rollup, Jest, ESLint & Prettier
 
 ## [1.2.0] - 2021-10-08
 
