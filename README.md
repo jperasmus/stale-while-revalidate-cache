@@ -1,6 +1,6 @@
 # Stale While Revalidate Cache
 
-This small TypeScript library is a storage-agnostic helper that implements a configurable stale-while-revalidate caching strategy for any functions, for any JavaScript environment.
+This small battle-tested TypeScript library is a storage-agnostic helper that implements a configurable stale-while-revalidate caching strategy for any functions, for any JavaScript environment.
 
 ## Installation
 

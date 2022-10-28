@@ -1,4 +1,4 @@
-import { createStaleWhileRevalidateCache, EmitterEvents } from '../src'
+import { createStaleWhileRevalidateCache, EmitterEvents } from '.'
 import { mockedLocalStorage } from './test-helpers'
 
 const validConfig = {
@@ -15,7 +15,7 @@ describe('createStaleWhileRevalidateCache', () => {
   })
 
   it(`should throw an error if the config is missing`, () => {
-    // @ts-expect-error
+    // @ts-expect-error calling function without config
     expect(() => createStaleWhileRevalidateCache()).toThrow()
   })
 
@@ -100,7 +100,7 @@ describe('createStaleWhileRevalidateCache', () => {
     expect(fn2).toHaveBeenCalledTimes(1) // But invoke the function to revalidate the value in the background
   })
 
-  it(`should emit an '${EmitterEvents.revalidateFailed}' event if the cache is stale but not dead and the revalidation request fails`, async done => {
+  it(`should emit an '${EmitterEvents.revalidateFailed}' event if the cache is stale but not dead and the revalidation request fails`, (done) => {
     // Explicitly set minTimeToStale to 0 and maxTimeToLive to Infinity so that the cache is always stale, but not dead for second invocation
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,
@@ -115,23 +115,24 @@ describe('createStaleWhileRevalidateCache', () => {
       throw error
     })
 
-    const result1 = await swr(key, fn1)
-    expect(result1).toEqual(value1)
+    swr(key, fn1).then((result1) => {
+      expect(result1).toEqual(value1)
 
-    swr.once(EmitterEvents.revalidateFailed).then(payload => {
-      expect(payload).toEqual({
-        cacheKey: key,
-        fn: fn2,
-        error,
+      swr.once(EmitterEvents.revalidateFailed).then((payload) => {
+        expect(payload).toEqual({
+          cacheKey: key,
+          fn: fn2,
+          error,
+        })
+        done()
       })
-      done()
+
+      swr(key, fn2).then((result2) => {
+        expect(result2).toEqual(value1) // Still return value1 since it is from the cache
+        expect(fn1).toHaveBeenCalledTimes(1)
+        expect(fn2).toHaveBeenCalledTimes(1) // But invoke the function to revalidate the value in the background
+      })
     })
-
-    const result2 = await swr(key, fn2)
-
-    expect(result2).toEqual(value1) // Still return value1 since it is from the cache
-    expect(fn1).toHaveBeenCalledTimes(1)
-    expect(fn2).toHaveBeenCalledTimes(1) // But invoke the function to revalidate the value in the background
   })
 
   it('should not return a value from cache if it has expired', async () => {
@@ -160,13 +161,13 @@ describe('createStaleWhileRevalidateCache', () => {
     expect(fn2).toHaveBeenCalledTimes(1)
   })
 
-  it(`should emit an '${EmitterEvents.invoke}' event when called`, async done => {
+  it(`should emit an '${EmitterEvents.invoke}' event when called`, (done) => {
     const swr = createStaleWhileRevalidateCache(validConfig)
     const key = 'key'
     const value = 'value'
     const fn = jest.fn(() => value)
 
-    swr.once(EmitterEvents.invoke).then(payload => {
+    swr.once(EmitterEvents.invoke).then((payload) => {
       expect(payload).toEqual({
         cacheKey: key,
         fn,
@@ -174,10 +175,10 @@ describe('createStaleWhileRevalidateCache', () => {
       done()
     })
 
-    await swr(key, fn)
+    swr(key, fn)
   })
 
-  it(`should emit a '${EmitterEvents.cacheHit}' event when the value is found in the cache`, async done => {
+  it(`should emit a '${EmitterEvents.cacheHit}' event when the value is found in the cache`, (done) => {
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,
       minTimeToStale: 10000,
@@ -188,29 +189,29 @@ describe('createStaleWhileRevalidateCache', () => {
     const fn = jest.fn(() => value)
 
     // Manually set the value in the cache
-    await Promise.all([
+    Promise.all([
       validConfig.storage.setItem(key(), value),
       validConfig.storage.setItem(timeKey, Date.now().toString()),
-    ])
-
-    swr.once(EmitterEvents.cacheHit).then(payload => {
-      expect(payload).toEqual({
-        cacheKey: key,
-        cachedValue: value,
+    ]).then(() => {
+      swr.once(EmitterEvents.cacheHit).then((payload) => {
+        expect(payload).toEqual({
+          cacheKey: key,
+          cachedValue: value,
+        })
+        done()
       })
-      done()
-    })
 
-    await swr(key, fn)
+      swr(key, fn)
+    })
   })
 
-  it(`should emit a '${EmitterEvents.cacheMiss}' event when the value is not found in the cache`, async done => {
+  it(`should emit a '${EmitterEvents.cacheMiss}' event when the value is not found in the cache`, (done) => {
     const swr = createStaleWhileRevalidateCache(validConfig)
     const key = () => 'key'
     const value = 'value'
     const fn = jest.fn(() => value)
 
-    swr.once(EmitterEvents.cacheMiss).then(payload => {
+    swr.once(EmitterEvents.cacheMiss).then((payload) => {
       expect(payload).toEqual({
         cacheKey: key,
         fn,
@@ -218,7 +219,7 @@ describe('createStaleWhileRevalidateCache', () => {
       done()
     })
 
-    await swr(key, fn)
+    swr(key, fn)
   })
 
   it(`should emit '${EmitterEvents.cacheHit}', '${EmitterEvents.cacheStale}' and '${EmitterEvents.revalidate}' events when the cache is stale but not expired`, async () => {
@@ -232,13 +233,14 @@ describe('createStaleWhileRevalidateCache', () => {
     const value = 'value'
     const fn = jest.fn(() => value)
 
+    const now = Date.now()
+    const originalDateNow = Date.now
+    Date.now = jest.fn(() => now)
+
     // Manually set the value in the cache
     await Promise.all([
       validConfig.storage.setItem(key, oldValue),
-      validConfig.storage.setItem(
-        key + '_time',
-        (Date.now() - 10000).toString()
-      ),
+      validConfig.storage.setItem(key + '_time', (now - 10000).toString()),
     ])
 
     const events: Record<any, any> = {}
@@ -249,50 +251,52 @@ describe('createStaleWhileRevalidateCache', () => {
 
     await swr(key, fn)
 
+    Date.now = originalDateNow
+
     expect(events).toMatchInlineSnapshot(`
-      Object {
-        "cacheHit": Object {
-          "cacheKey": "key",
-          "cachedValue": "old value",
+{
+  "cacheHit": {
+    "cacheKey": "key",
+    "cachedValue": "old value",
+  },
+  "cacheStale": {
+    "cacheKey": "key",
+    "cachedAge": 10000,
+    "cachedValue": "old value",
+  },
+  "invoke": {
+    "cacheKey": "key",
+    "fn": [MockFunction] {
+      "calls": [
+        [],
+      ],
+      "results": [
+        {
+          "type": "return",
+          "value": "value",
         },
-        "cacheStale": Object {
-          "cacheKey": "key",
-          "cachedAge": 10000,
-          "cachedValue": "old value",
+      ],
+    },
+  },
+  "revalidate": {
+    "cacheKey": "key",
+    "fn": [MockFunction] {
+      "calls": [
+        [],
+      ],
+      "results": [
+        {
+          "type": "return",
+          "value": "value",
         },
-        "invoke": Object {
-          "cacheKey": "key",
-          "fn": [MockFunction] {
-            "calls": Array [
-              Array [],
-            ],
-            "results": Array [
-              Object {
-                "type": "return",
-                "value": "value",
-              },
-            ],
-          },
-        },
-        "revalidate": Object {
-          "cacheKey": "key",
-          "fn": [MockFunction] {
-            "calls": Array [
-              Array [],
-            ],
-            "results": Array [
-              Object {
-                "type": "return",
-                "value": "value",
-              },
-            ],
-          },
-        },
-      }
-    `)
+      ],
+    },
+  },
+}
+`)
   })
 
-  it(`should emit '${EmitterEvents.cacheGetFailed}' event when an error is thrown when retrieving from the storage and continue as-if cache is expired`, async done => {
+  it(`should emit '${EmitterEvents.cacheGetFailed}' event when an error is thrown when retrieving from the storage and continue as-if cache is expired`, (done) => {
     const error = new Error('storage read error')
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,
@@ -309,7 +313,7 @@ describe('createStaleWhileRevalidateCache', () => {
     const value = 'value'
     const fn = jest.fn(() => value)
 
-    swr.once(EmitterEvents.cacheGetFailed).then(payload => {
+    swr.once(EmitterEvents.cacheGetFailed).then((payload) => {
       expect(payload).toEqual({
         cacheKey: key,
         error,
@@ -317,12 +321,12 @@ describe('createStaleWhileRevalidateCache', () => {
       done()
     })
 
-    const result = await swr(key, fn)
-
-    expect(result).toEqual(value)
+    swr(key, fn).then((result) => {
+      expect(result).toEqual(value)
+    })
   })
 
-  it(`should emit '${EmitterEvents.cacheSetFailed}' event when an error is thrown when persisting to the storage`, async done => {
+  it(`should emit '${EmitterEvents.cacheSetFailed}' event when an error is thrown when persisting to the storage`, (done) => {
     const error = new Error('storage persist error')
     const swr = createStaleWhileRevalidateCache({
       ...validConfig,
@@ -339,7 +343,7 @@ describe('createStaleWhileRevalidateCache', () => {
     const value = 'value'
     const fn = jest.fn(() => value)
 
-    swr.once(EmitterEvents.cacheSetFailed).then(payload => {
+    swr.once(EmitterEvents.cacheSetFailed).then((payload) => {
       expect(payload).toEqual({
         cacheKey: key,
         error,
@@ -347,8 +351,8 @@ describe('createStaleWhileRevalidateCache', () => {
       done()
     })
 
-    const result = await swr(key, fn)
-
-    expect(result).toEqual(value)
+    swr(key, fn).then((result) => {
+      expect(result).toEqual(value)
+    })
   })
 })

@@ -4,54 +4,55 @@
   "author": "JP Erasmus",
   "license": "MIT",
   "main": "dist/index.js",
-  "module": "dist/stale-while-revalidate-cache.esm.js",
+  "module": "dist/index.mjs",
   "typings": "dist/index.d.ts",
   "files": [
     "dist",
     "types"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=14"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/jperasmus/stale-while-revalidate-cache.git"
   },
   "scripts": {
-    "start": "tsdx watch",
-    "build": "tsdx build",
-    "test": "tsdx test",
-    "test:watch": "tsdx test --watch",
-    "test:coverage": "tsdx test --coverage",
-    "lint": "tsdx lint src test types",
-    "lint:fix": "npm run lint -- --fix",
-    "prepare": "tsdx build",
-    "size": "size-limit",
-    "analyze": "size-limit --why"
+    "clean": "rm -rf dist",
+    "dev": "rollup -c -w",
+    "prebuild": "npm run clean",
+    "build": "rollup -c",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "prepare": "npm run build",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "npm run lint -- --fix"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "tsdx lint"
+      "pre-commit": "npm run lint"
     }
   },
-  "size-limit": [
-    {
-      "path": "dist/stale-while-revalidate-cache.cjs.production.min.js",
-      "limit": "10 KB"
-    },
-    {
-      "path": "dist/stale-while-revalidate-cache.esm.js",
-      "limit": "10 KB"
-    }
-  ],
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^23.0.2",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "@rollup/plugin-typescript": "^9.0.2",
     "@size-limit/preset-small-lib": "^8.1.0",
-    "husky": "^7.0.1",
-    "np": "^7.5.0",
-    "size-limit": "^5.0.1",
-    "tsdx": "^0.14.1",
-    "tslib": "^2.3.0",
-    "typescript": "^3.9.10"
+    "@types/jest": "^29.2.0",
+    "@typescript-eslint/eslint-plugin": "^5.40.1",
+    "@typescript-eslint/parser": "^5.40.1",
+    "eslint": "^8.26.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "husky": "^8.0.1",
+    "jest": "^29.2.1",
+    "np": "^7.6.2",
+    "prettier": "^2.7.1",
+    "rollup": "^3.2.3",
+    "ts-jest": "^29.0.3",
+    "tslib": "^2.4.0",
+    "typescript": "^4.8.4"
   },
   "dependencies": {
     "emittery": "^0.9.2"
