@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## [2.1.0] - 2023-01-26
+
+### Added
+
+- Partial overrides of any cache config values per function invocation.
+
 ## [2.0.0] - 2022-10-28
 
 ### Removed
@@ -40,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add emitter events for when storage get and set fails
 
-
-[Unreleased]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v2.0.0...HEAD
+[unreleased]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v1.1.0...v1.2.0

@@ -24,7 +24,7 @@ The cache helper (`swr`) is also a fully functional event emitter, but more abou
 import { createStaleWhileRevalidateCache } from 'stale-while-revalidate-cache'
 
 const swr = createStaleWhileRevalidateCache({
-  storage: window.localStorage
+  storage: window.localStorage,
 })
 
 const cacheKey = 'a-cache-key'
@@ -43,6 +43,19 @@ const result3 = await swr(cacheKey, async () => 'yet-another-return-value')
 
 The `createStaleWhileRevalidateCache` function takes a single config object, that you can use to configure how your stale-while-revalidate cache should behave. The only mandatory property is the `storage` property, which tells the library where the content should be persisted and retrieved from.
 
+You can also override any of the following configuration values when you call the actual `swr()` helper function by passing a partial config object as a third argument. For example:
+
+```typescript
+const cacheKey = 'some-cache-key'
+const yourFunction = async () => ({ something: 'useful' })
+const configOverrides = {
+  maxTimeToLive: 30000,
+  minTimeToStale: 3000,
+}
+
+const result = await swr(cacheKey, yourFunction, configOverrides)
+```
+
 #### storage
 
 The `storage` property can be any object that have `getItem(cacheKey: string)` and `setItem(cacheKey: string, value: any)` methods on it. Because of this, in the browser, you could simply use `window.localStorage` as your `storage` object, but there are many other storage options that satisfies this requirement. Or you can build your own.
@@ -51,23 +64,25 @@ For instance, if you want to use Redis on the server:
 
 ```javascript
 const Redis = require('ioredis')
-const { createStaleWhileRevalidateCache } = require('stale-while-revalidate-cache')
+const {
+  createStaleWhileRevalidateCache,
+} = require('stale-while-revalidate-cache')
 
 const redis = new Redis()
 
 const storage = {
-    async getItem(cacheKey: string) {
-      return redis.get(cacheKey)
-    },
-    async setItem(cacheKey: string, cacheValue: any) {
-      // Use px or ex depending on whether you use milliseconds or seconds for your ttl
-      // It is recommended to set ttl to your maxTimeToLive (it has to be more than it)
-      await redis.set(cacheKey, cacheValue, 'px', ttl)
-    },
-  }
+  async getItem(cacheKey: string) {
+    return redis.get(cacheKey)
+  },
+  async setItem(cacheKey: string, cacheValue: any) {
+    // Use px or ex depending on whether you use milliseconds or seconds for your ttl
+    // It is recommended to set ttl to your maxTimeToLive (it has to be more than it)
+    await redis.set(cacheKey, cacheValue, 'px', ttl)
+  },
+}
 
 const swr = createStaleWhileRevalidateCache({
-  storage
+  storage,
 })
 ```
 
@@ -142,7 +157,10 @@ Emitted whenever the revalidate function failed, whether that is synchronously w
 A slightly more practical example.
 
 ```typescript
-import { createStaleWhileRevalidateCache, EmitterEvents } from 'stale-while-revalidate-cache'
+import {
+  createStaleWhileRevalidateCache,
+  EmitterEvents,
+} from 'stale-while-revalidate-cache'
 import { metrics } from './utils/some-metrics-util.ts'
 
 const swr = createStaleWhileRevalidateCache({
@@ -157,32 +175,32 @@ swr.onAny((event, payload) => {
   switch (event) {
     case EmitterEvents.invoke:
       metrics.countInvocations(payload.cacheKey)
-      break;
+      break
 
     case EmitterEvents.cacheHit:
       metrics.countCacheHit(payload.cacheKey, payload.cachedValue)
-      break;
+      break
 
     case EmitterEvents.cacheMiss:
       metrics.countCacheMisses(payload.cacheKey)
-      break;
+      break
 
     case EmitterEvents.cacheExpired:
       metrics.countCacheExpirations(payload)
-      break;
+      break
 
     case EmitterEvents.cacheGetFailed:
     case EmitterEvents.cacheSetFailed:
       metrics.countCacheErrors(payload)
-      break;
+      break
 
     case EmitterEvents.revalidateFailed:
       metrics.countRevalidationFailures(payload)
-      break;
+      break
 
     case EmitterEvents.revalidate:
     default:
-      break;
+      break
   }
 })
 
@@ -195,13 +213,15 @@ interface Product {
 
 async function fetchProductDetails(productId: string): Promise<Product> {
   const response = await fetch(`/api/products/${productId}`)
-  const product = await response.json() as Product
+  const product = (await response.json()) as Product
   return product
 }
 
 const productId = 'product-123456'
 
-const product = await swr<Product>(productId, async () => fetchProductDetails(productId))
+const product = await swr<Product>(productId, async () =>
+  fetchProductDetails(productId)
+)
 
 // The returned `product` will be typed as `Product`
 ```
