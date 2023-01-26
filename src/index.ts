@@ -20,7 +20,8 @@ export const EmitterEvents = {
 
 type StaleWhileRevalidateCache = <ReturnValue>(
   cacheKey: string | (() => string),
-  fn: () => ReturnValue
+  fn: () => ReturnValue,
+  configOverrides?: Partial<Config>
 ) => Promise<ReturnValue>
 
 type StaleWhileRevalidate = StaleWhileRevalidateCache & EmitterMethods
@@ -28,15 +29,18 @@ type StaleWhileRevalidate = StaleWhileRevalidateCache & EmitterMethods
 export function createStaleWhileRevalidateCache(
   config: Config
 ): StaleWhileRevalidate {
-  const { storage, minTimeToStale, maxTimeToLive, serialize, deserialize } =
-    parseConfig(config)
-
+  const cacheConfig = parseConfig(config)
   const emitter = getEmitter()
 
   async function staleWhileRevalidate<ReturnValue>(
     cacheKey: string | (() => string),
-    fn: () => ReturnValue
+    fn: () => ReturnValue,
+    configOverrides?: Partial<Config>
   ): Promise<ReturnValue> {
+    const { storage, minTimeToStale, maxTimeToLive, serialize, deserialize } =
+      configOverrides
+        ? parseConfig({ ...cacheConfig, ...configOverrides })
+        : cacheConfig
     emitter.emit(EmitterEvents.invoke, { cacheKey, fn })
 
     const key = isFunction(cacheKey) ? String(cacheKey()) : String(cacheKey)
