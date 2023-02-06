@@ -110,6 +110,21 @@ This property can optionally be provided if you want to deserialize a previously
 
 To continue with the object value in `window.localStorage` example, you can set `deserialize` to `JSON.parse` and the serialized object will be parsed as a plain JavaScript object.
 
+### Static Methods
+
+#### Manually persist to cache
+
+There is a convenience static method made available if you need to manually write to the underlying storage. This method is better than directly writing to the storage because it will ensure the necessary entries are made for timestamp invalidation.
+
+```typescript
+const cacheKey = 'your-cache-key'
+const cacheValue = { something: 'useful' }
+
+const result = await swr.persist(cacheKey, cacheValue)
+```
+
+The value will be passed through the `serialize` method you optionally provided when you instantiated the `swr` helper.
+
 ### Event Emitter
 
 The cache helper method returned from the `createStaleWhileRevalidateCache` function is a fully functional event emitter that is an instance of the excellent [Emittery](https://www.npmjs.com/package/emittery) package. Please look at the linked package's documentation to see all the available methods.

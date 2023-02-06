@@ -1,19 +1,24 @@
-import { Config } from '../types'
+import { Config, IncomingCacheKey } from '../types'
 
 type Fn = (...args: any[]) => any
 
-export const isFunction = (value: any): value is Fn =>
+export const isFunction = (value: unknown): value is Fn =>
   typeof value === 'function'
 
 type Nil = null | undefined
 
-export const isNil = (value: any): value is Nil =>
+export const isNil = (value: unknown): value is Nil =>
   typeof value === 'undefined' || value === null
 
-export const isPlainObject = (value: any) =>
+export const isPlainObject = (value: unknown) =>
   !!value && typeof value === 'object' && !Array.isArray(value)
 
-export const passThrough = (value: any) => value
+export const getCacheKey = (cacheKey: IncomingCacheKey) =>
+  isFunction(cacheKey) ? String(cacheKey()) : String(cacheKey)
+
+export const createTimeCacheKey = (cacheKey: string) => `${cacheKey}_time`
+
+export const passThrough = (value: unknown) => value
 
 export function parseConfig(config: Config) {
   if (!isPlainObject(config)) {
