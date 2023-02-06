@@ -11,3 +11,5 @@ export interface Config {
   serialize?: (value: any) => any
   deserialize?: (value: any) => any
 }
+
+export type IncomingCacheKey = string | (() => string)

@@ -1,10 +1,16 @@
-import { Config } from '../types'
+import { Config, IncomingCacheKey } from '../types'
 import {
   EmitterMethods,
   extendWithEmitterMethods,
   getEmitter,
 } from './event-emitter'
-import { isFunction, isNil, parseConfig } from './helpers'
+import {
+  createTimeCacheKey,
+  getCacheKey,
+  isFunction,
+  isNil,
+  parseConfig,
+} from './helpers'
 
 export const EmitterEvents = {
   cacheHit: 'cacheHit',
@@ -19,12 +25,21 @@ export const EmitterEvents = {
 } as const
 
 type StaleWhileRevalidateCache = <ReturnValue>(
-  cacheKey: string | (() => string),
+  cacheKey: IncomingCacheKey,
   fn: () => ReturnValue,
   configOverrides?: Partial<Config>
 ) => Promise<ReturnValue>
 
-type StaleWhileRevalidate = StaleWhileRevalidateCache & EmitterMethods
+type StaticMethods = {
+  persist: <CacheValue>(
+    cacheKey: IncomingCacheKey,
+    cacheValue: CacheValue
+  ) => Promise<void>
+}
+
+type StaleWhileRevalidate = StaleWhileRevalidateCache &
+  EmitterMethods &
+  StaticMethods
 
 export function createStaleWhileRevalidateCache(
   config: Config
@@ -32,8 +47,35 @@ export function createStaleWhileRevalidateCache(
   const cacheConfig = parseConfig(config)
   const emitter = getEmitter()
 
+  async function persistValue<CacheValue>({
+    cacheKey,
+    cacheValue,
+    serialize,
+    storage,
+  }: {
+    cacheKey: IncomingCacheKey
+    cacheValue: CacheValue
+    serialize: Config['serialize']
+    storage: Config['storage']
+  }) {
+    const key = getCacheKey(cacheKey)
+    const timeKey = createTimeCacheKey(key)
+
+    try {
+      await Promise.all([
+        storage.setItem(
+          key,
+          isFunction(serialize) ? serialize(cacheValue) : cacheValue
+        ),
+        storage.setItem(timeKey, Date.now().toString()),
+      ])
+    } catch (error) {
+      emitter.emit(EmitterEvents.cacheSetFailed, { cacheKey, error })
+    }
+  }
+
   async function staleWhileRevalidate<ReturnValue>(
-    cacheKey: string | (() => string),
+    cacheKey: IncomingCacheKey,
     fn: () => ReturnValue,
     configOverrides?: Partial<Config>
   ): Promise<ReturnValue> {
@@ -43,8 +85,8 @@ export function createStaleWhileRevalidateCache(
         : cacheConfig
     emitter.emit(EmitterEvents.invoke, { cacheKey, fn })
 
-    const key = isFunction(cacheKey) ? String(cacheKey()) : String(cacheKey)
-    const timeKey = `${key}_time`
+    const key = getCacheKey(cacheKey)
+    const timeKey = createTimeCacheKey(key)
 
     async function retrieveCachedValue() {
       try {
@@ -81,17 +123,6 @@ export function createStaleWhileRevalidateCache(
       }
     }
 
-    async function persistValue(result: ReturnValue) {
-      try {
-        await Promise.all([
-          storage.setItem(key, serialize(result)),
-          storage.setItem(timeKey, Date.now().toString()),
-        ])
-      } catch (error) {
-        emitter.emit(EmitterEvents.cacheSetFailed, { cacheKey, error })
-      }
-    }
-
     async function revalidate() {
       try {
         emitter.emit(EmitterEvents.revalidate, { cacheKey, fn })
@@ -101,7 +132,7 @@ export function createStaleWhileRevalidateCache(
         // Intentionally persisting asynchronously and not blocking since there is
         // in any case a chance for a race condition to occur when using an external
         // persistence store, like Redis, with multiple consumers. The impact is low.
-        persistValue(result)
+        persistValue({ cacheValue: result, cacheKey, serialize, storage })
 
         return result
       } catch (error) {
@@ -133,6 +164,20 @@ export function createStaleWhileRevalidateCache(
 
     return revalidate()
   }
+
+  const persist = <CacheValue>(
+    cacheKey: IncomingCacheKey,
+    cacheValue: CacheValue
+  ) => {
+    return persistValue({
+      cacheKey,
+      cacheValue,
+      serialize: cacheConfig.serialize,
+      storage: cacheConfig.storage,
+    })
+  }
+
+  staleWhileRevalidate.persist = persist
 
   return extendWithEmitterMethods(emitter, staleWhileRevalidate)
 }
