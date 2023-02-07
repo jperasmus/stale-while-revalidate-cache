@@ -30,7 +30,7 @@ export function createStaleWhileRevalidateCache(
   }: {
     cacheKey: IncomingCacheKey
     cacheValue: CacheValue
-    serialize: Config['serialize']
+    serialize: NonNullable<Config['serialize']>
     storage: Config['storage']
   }) {
     const key = getCacheKey(cacheKey)
@@ -38,10 +38,7 @@ export function createStaleWhileRevalidateCache(
 
     try {
       await Promise.all([
-        storage.setItem(
-          key,
-          isFunction(serialize) ? serialize(cacheValue) : cacheValue
-        ),
+        storage.setItem(key, serialize(cacheValue)),
         storage.setItem(timeKey, Date.now().toString()),
       ])
     } catch (error) {
