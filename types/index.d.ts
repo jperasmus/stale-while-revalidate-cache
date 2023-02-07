@@ -13,3 +13,16 @@ export interface Config {
 }
 
 export type IncomingCacheKey = string | (() => string)
+
+export type StaleWhileRevalidateCache = <ReturnValue>(
+  cacheKey: IncomingCacheKey,
+  fn: () => ReturnValue,
+  configOverrides?: Partial<Config>
+) => Promise<ReturnValue>
+
+export type StaticMethods = {
+  persist: <CacheValue>(
+    cacheKey: IncomingCacheKey,
+    cacheValue: CacheValue
+  ) => Promise<void>
+}

@@ -2,12 +2,12 @@ import Emittery from 'emittery'
 
 export type EmitterMethods = typeof Emittery.prototype
 
-export const getEmitter = (): Emittery => {
+export const createEmitter = (): Emittery => {
   return new Emittery()
 }
 
 export const extendWithEmitterMethods = <Target>(
-  emitter: ReturnType<typeof getEmitter>,
+  emitter: ReturnType<typeof createEmitter>,
   target: Target
 ): Target & EmitterMethods => {
   const extended = target as Target & EmitterMethods

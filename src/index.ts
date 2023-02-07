@@ -1,43 +1,18 @@
-import { Config, IncomingCacheKey } from '../types'
+import {
+  Config,
+  IncomingCacheKey,
+  StaleWhileRevalidateCache,
+  StaticMethods,
+} from '../types'
+import { EmitterEvents } from './constants'
 import {
   EmitterMethods,
   extendWithEmitterMethods,
-  getEmitter,
+  createEmitter,
 } from './event-emitter'
-import {
-  createTimeCacheKey,
-  getCacheKey,
-  isFunction,
-  isNil,
-  parseConfig,
-} from './helpers'
+import { createTimeCacheKey, getCacheKey, isNil, parseConfig } from './helpers'
 
-export const EmitterEvents = {
-  cacheHit: 'cacheHit',
-  cacheMiss: 'cacheMiss',
-  cacheStale: 'cacheStale',
-  cacheExpired: 'cacheExpired',
-  cacheGetFailed: 'cacheGetFailed',
-  cacheSetFailed: 'cacheSetFailed',
-  invoke: 'invoke',
-  revalidate: 'revalidate',
-  revalidateFailed: 'revalidateFailed',
-} as const
-
-type StaleWhileRevalidateCache = <ReturnValue>(
-  cacheKey: IncomingCacheKey,
-  fn: () => ReturnValue,
-  configOverrides?: Partial<Config>
-) => Promise<ReturnValue>
-
-type StaticMethods = {
-  persist: <CacheValue>(
-    cacheKey: IncomingCacheKey,
-    cacheValue: CacheValue
-  ) => Promise<void>
-}
-
-type StaleWhileRevalidate = StaleWhileRevalidateCache &
+export type StaleWhileRevalidate = StaleWhileRevalidateCache &
   EmitterMethods &
   StaticMethods
 
@@ -45,7 +20,7 @@ export function createStaleWhileRevalidateCache(
   config: Config
 ): StaleWhileRevalidate {
   const cacheConfig = parseConfig(config)
-  const emitter = getEmitter()
+  const emitter = createEmitter()
 
   async function persistValue<CacheValue>({
     cacheKey,

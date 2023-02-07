@@ -1,6 +1,7 @@
-import { createStaleWhileRevalidateCache, EmitterEvents } from '.'
+import { createStaleWhileRevalidateCache } from './index'
 import { createTimeCacheKey } from './helpers'
 import { mockedLocalStorage } from './test-helpers'
+import { EmitterEvents } from './constants'
 
 const validConfig = {
   storage: mockedLocalStorage,
