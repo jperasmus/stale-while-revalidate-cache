@@ -1,4 +1,4 @@
-import { Config, IncomingCacheKey } from '../types'
+import type { Config, IncomingCacheKey } from '../types'
 
 type Fn = (...args: any[]) => any
 
@@ -39,7 +39,9 @@ export function parseConfig(config: Config) {
 
   const minTimeToStale = config.minTimeToStale || 0
   const maxTimeToLive =
-    Math.min(config.maxTimeToLive!, Number.MAX_SAFE_INTEGER) || Infinity
+    config.maxTimeToLive === Infinity
+      ? Infinity
+      : Math.min(config.maxTimeToLive ?? 0, Number.MAX_SAFE_INTEGER) || Infinity
   const serialize = isFunction(config.serialize)
     ? config.serialize
     : passThrough

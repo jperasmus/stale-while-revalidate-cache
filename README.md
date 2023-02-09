@@ -16,7 +16,37 @@ npm install stale-while-revalidate-cache
 
 At the most basic level, you can import the exported `createStaleWhileRevalidateCache` function that takes some config and gives you back the cache helper.
 
-This cache helper (called `swr` in example below) is an asynchronous function that you can invoke whenever you want to run your cached function. This cache helper takes two arguments, a key to identify the resource in the cache, and the function that should be invoked to retrieve the data that you want to cache. This function would typically fetch content from an external API, but it could be anything like some resource intensive computation that you don't want the user to wait for and a cache value would be acceptable.
+This cache helper (called `swr` in example below) is an asynchronous function that you can invoke whenever you want to run your cached function. This cache helper takes two arguments, a key to identify the resource in the cache, and the function that should be invoked to retrieve the data that you want to cache. (An optional third argument can be used to override the cache config for the specific invocation.) This function would typically fetch content from an external API, but it could be anything like some resource intensive computation that you don't want the user to wait for and a cache value would be acceptable.
+
+Invoking this `swr` function returns a [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) that resolves to an object of the following shape:
+
+```typescript
+type ResponseObject = {
+  /* The value is inferred from the async function passed to swr */
+  value: ReturnType<typeof yourAsyncFunction>
+  /**
+   * Indicates the cache status of the returned value:
+   *
+   * `fresh`: returned from cache without revalidating, ie. `cachedTime` < `minTimeToStale`
+   * `stale`: returned from cache but revalidation running in background, ie. `minTimeToStale` < `cachedTime` < `maxTimeToLive`
+   * `expired`: not returned from cache but fetched fresh from async function invocation, ie. `cachedTime` > `maxTimeToLive`
+   * `miss`: no previous cache entry existed so waiting for response from async function before returning value
+   */
+  status: 'fresh' | 'stale' | 'expired' | 'miss'
+  /* `minTimeToStale` config value used (see configuration below) */
+  minTimeToStale: number
+  /* `maxTimeToLive` config value used (see configuration below) */
+  maxTimeToLive: number
+  /* Timestamp when function was invoked */
+  now: number
+  /* Timestamp when value was cached */
+  cachedAt: number
+  /* Timestamp when cache value will be stale */
+  staleAt: number
+  /* Timestamp when cache value will expire */
+  expireAt: number
+}
+```
 
 The cache helper (`swr`) is also a fully functional event emitter, but more about that later.
 
@@ -30,13 +60,13 @@ const swr = createStaleWhileRevalidateCache({
 const cacheKey = 'a-cache-key'
 
 const result = await swr(cacheKey, async () => 'some-return-value')
-// result: 'some-return-value'
+// result.value: 'some-return-value'
 
 const result2 = await swr(cacheKey, async () => 'some-other-return-value')
-// result2: 'some-return-value' <- returned from cache while revalidating to new value for next invocation
+// result2.value: 'some-return-value' <- returned from cache while revalidating to new value for next invocation
 
 const result3 = await swr(cacheKey, async () => 'yet-another-return-value')
-// result3: 'some-other-return-value' <- previous value (assuming it was already revalidated and cached by now)
+// result3.value: 'some-other-return-value' <- previous value (assuming it was already revalidated and cached by now)
 ```
 
 ### Configuration
@@ -63,10 +93,8 @@ The `storage` property can be any object that have `getItem(cacheKey: string)` a
 For instance, if you want to use Redis on the server:
 
 ```javascript
-const Redis = require('ioredis')
-const {
-  createStaleWhileRevalidateCache,
-} = require('stale-while-revalidate-cache')
+import Redis from 'ioredis'
+import { createStaleWhileRevalidateCache } from 'stale-while-revalidate-cache'
 
 const redis = new Redis()
 
@@ -234,12 +262,49 @@ async function fetchProductDetails(productId: string): Promise<Product> {
 
 const productId = 'product-123456'
 
-const product = await swr<Product>(productId, async () =>
+const result = await swr<Product>(productId, async () =>
   fetchProductDetails(productId)
 )
 
+const product = result.value
 // The returned `product` will be typed as `Product`
 ```
+
+## Migrations
+
+### Migrating from v2 to v3
+
+#### Return Type
+
+The main breaking change between v2 and v3 is that for v3, the `swr` function now returns a payload object with a `value` property whereas v2 returned this "value" property directly.
+
+**For v2**
+
+```typescript
+const value = await swr('cacheKey', async () => 'cacheValue')
+```
+
+**For v3**
+
+> Notice the destructured object with the `value` property. The payload includes more properties you might be interested, like the cache `status`.
+
+```typescript
+const { value, status } = await swr('cacheKey', async () => 'cacheValue')
+```
+
+#### Event Emitter property names
+
+For all events, like the `EmitterEvents.cacheExpired` event, the `cachedTime` property was renamed to `cachedAt`.
+
+#### Persist static method
+
+The `swr.persist()` method now throws an error if something goes wrong while writing to storage. Previously, this method only emitted the `EmitterEvents.cacheSetFailed` event and silently swallowed the error.
+
+### Migrating from v1 to v2
+
+This was only a breaking change since support for Node.js v12 was dropped. If you are using a version newer than v12, this should be non-breaking for you.
+
+Otherwise, you will need to upgrade to a newer Node.js version to use v2.
 
 ## License
 
