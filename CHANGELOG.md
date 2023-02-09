@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## [3.0.0] - 2023-02-09
+
+### Changed
+
+- Return type from `swr` cache function now returns a payload object containing the cache value and not just the cache value.
+- Event emitter events that used `cachedTime` changed to `cachedAt`
+- `swr.persist()` function now throws if an error occurs while writing to storage
+
 ## [2.2.0] - 2023-02-06
 
 ### Added
@@ -52,7 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add emitter events for when storage get and set fails
 
-[unreleased]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v2.2.0...HEAD
+[unreleased]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.0.0...HEAD
+[2.2.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v1.2.0...v2.0.0
