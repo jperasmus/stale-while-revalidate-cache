@@ -1,6 +1,6 @@
 import { createStaleWhileRevalidateCache } from './index'
 import { createTimeCacheKey } from './helpers'
-import { mockedLocalStorage } from './test-helpers'
+import { mockedLocalStorage, valueFromEnvelope } from './test-helpers'
 import { EmitterEvents } from './constants'
 
 const validConfig = {
@@ -42,13 +42,13 @@ describe('createStaleWhileRevalidateCache', () => {
       const originalDateNow = Date.now
 
       Date.now = jest.fn(() => now - 3000) // 3 seconds back in time
-      const result1 = await swr(key, fn1, configOverrides)
+      const envelope1 = await swr(key, fn1, configOverrides)
 
       Date.now = originalDateNow // Reset Date.now to original value so that cache for this key is expired
-      const result2 = await swr(key, fn2, configOverrides)
+      const envelope2 = await swr(key, fn2, configOverrides)
 
-      expect(result1).toEqual(value1)
-      expect(result2).toEqual(value2)
+      expect(valueFromEnvelope(envelope1)).toEqual(value1)
+      expect(valueFromEnvelope(envelope2)).toEqual(value2)
       expect(fn1).toHaveBeenCalledTimes(1)
       expect(fn2).toHaveBeenCalledTimes(1)
     })
@@ -62,7 +62,16 @@ describe('createStaleWhileRevalidateCache', () => {
       const fn = jest.fn(() => value)
       const result = await swr(key, fn)
 
-      expect(result).toEqual(value)
+      expect(result).toMatchObject({
+        value,
+        status: 'miss',
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
       expect(fn).toHaveBeenCalledTimes(1)
       expect(mockedLocalStorage.getItem(key)).toEqual(value)
       expect(mockedLocalStorage.getItem(createTimeCacheKey(key))).toEqual(
@@ -83,7 +92,16 @@ describe('createStaleWhileRevalidateCache', () => {
       const fn = jest.fn(() => value)
       const result = await swr(key, fn)
 
-      expect(result).toEqual(JSON.parse(JSON.stringify(value)))
+      expect(result).toMatchObject({
+        value: JSON.parse(JSON.stringify(value)),
+        status: 'miss',
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
       expect(fn).toHaveBeenCalledTimes(1)
       expect(customSerialize).toHaveBeenCalledTimes(1)
       expect(customDeserialize).toHaveBeenCalledTimes(1)
@@ -104,8 +122,26 @@ describe('createStaleWhileRevalidateCache', () => {
       const result1 = await swr(key, fn1)
       const result2 = await swr(key, fn2)
 
-      expect(result1).toEqual(value1)
-      expect(result2).toEqual(value1)
+      expect(result1).toMatchObject({
+        value: value1,
+        status: 'miss',
+        minTimeToStale: 1000,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
+      expect(result2).toMatchObject({
+        value: value1,
+        status: 'fresh',
+        minTimeToStale: 1000,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
       expect(fn1).toHaveBeenCalledTimes(1)
       expect(fn2).not.toHaveBeenCalled()
     })
@@ -125,8 +161,26 @@ describe('createStaleWhileRevalidateCache', () => {
       const result1 = await swr(key, fn1)
       const result2 = await swr(key, fn2)
 
-      expect(result1).toEqual(value1)
-      expect(result2).toEqual(value1) // Still return value1 since it is from the cache
+      expect(result1).toMatchObject({
+        value: value1,
+        status: 'miss',
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
+      expect(result2).toMatchObject({
+        value: value1, // Still return value1 since it is from the cache
+        status: 'stale',
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
       expect(fn1).toHaveBeenCalledTimes(1)
       expect(fn2).toHaveBeenCalledTimes(1) // But invoke the function to revalidate the value in the background
     })
@@ -151,31 +205,60 @@ describe('createStaleWhileRevalidateCache', () => {
       Date.now = originalDateNow // Reset Date.now to original value so that cache for this key is expired
       const result2 = await swr(key, fn2)
 
-      expect(result1).toEqual(value1)
-      expect(result2).toEqual(value2)
+      expect(result1).toMatchObject({
+        value: value1,
+        status: 'miss',
+        minTimeToStale: 1000,
+        maxTimeToLive: 2000,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: expect.any(Number),
+        staleAt: expect.any(Number),
+      })
+      expect(result2).toMatchObject({
+        value: value2,
+        status: 'expired',
+        minTimeToStale: 1000,
+        maxTimeToLive: 2000,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: expect.any(Number),
+        staleAt: expect.any(Number),
+      })
       expect(fn1).toHaveBeenCalledTimes(1)
       expect(fn2).toHaveBeenCalledTimes(1)
     })
   })
 
   describe('EmitterEvents', () => {
-    it(`should emit an '${EmitterEvents.revalidateFailed}' event if the cache is stale but not dead and the revalidation request fails`, (done) => {
-      // Explicitly set minTimeToStale to 0 and maxTimeToLive to Infinity so that the cache is always stale, but not dead for second invocation
-      const swr = createStaleWhileRevalidateCache({
-        ...validConfig,
-        minTimeToStale: 0,
-        maxTimeToLive: Infinity,
-      })
-      const key = 'stale-example'
-      const value1 = 'value 1'
-      const error = new Error('beep boop')
-      const fn1 = jest.fn(() => value1)
-      const fn2 = jest.fn(() => {
-        throw error
-      })
+    it(`should emit an '${EmitterEvents.revalidateFailed}' event if the cache is stale but not dead and the revalidation request fails`, () => {
+      return new Promise<void>(async (resolve) => {
+        // Explicitly set minTimeToStale to 0 and maxTimeToLive to Infinity so that the cache is always stale, but not dead for second invocation
+        const swr = createStaleWhileRevalidateCache({
+          ...validConfig,
+          minTimeToStale: 0,
+          maxTimeToLive: Infinity,
+        })
+        const key = 'stale-example'
+        const value1 = 'value 1'
+        const error = new Error('beep boop')
+        const fn1 = jest.fn(() => value1)
+        const fn2 = jest.fn(() => {
+          throw error
+        })
 
-      swr(key, fn1).then((result1) => {
-        expect(result1).toEqual(value1)
+        const result1 = await swr(key, fn1)
+
+        expect(result1).toMatchObject({
+          value: value1,
+          status: 'miss',
+          minTimeToStale: 0,
+          maxTimeToLive: Infinity,
+          now: expect.any(Number),
+          cachedAt: expect.any(Number),
+          expireAt: Infinity,
+          staleAt: expect.any(Number),
+        })
 
         swr.once(EmitterEvents.revalidateFailed).then((payload) => {
           expect(payload).toEqual({
@@ -183,14 +266,23 @@ describe('createStaleWhileRevalidateCache', () => {
             fn: fn2,
             error,
           })
-          done()
+          resolve()
         })
 
-        swr(key, fn2).then((result2) => {
-          expect(result2).toEqual(value1) // Still return value1 since it is from the cache
-          expect(fn1).toHaveBeenCalledTimes(1)
-          expect(fn2).toHaveBeenCalledTimes(1) // But invoke the function to revalidate the value in the background
+        const result2 = await swr(key, fn2)
+
+        expect(result2).toMatchObject({
+          value: value1, // Still return value1 since it is from the cache
+          status: 'stale',
+          minTimeToStale: 0,
+          maxTimeToLive: Infinity,
+          now: expect.any(Number),
+          cachedAt: expect.any(Number),
+          expireAt: Infinity,
+          staleAt: expect.any(Number),
         })
+        expect(fn1).toHaveBeenCalledTimes(1)
+        expect(fn2).toHaveBeenCalledTimes(1) // But invoke the function to revalidate the value in the background
       })
     })
 
@@ -217,15 +309,11 @@ describe('createStaleWhileRevalidateCache', () => {
         minTimeToStale: 10000,
       })
       const key = () => 'key'
-      const timeKey = createTimeCacheKey(key())
       const value = 'value'
       const fn = jest.fn(() => value)
 
       // Manually set the value in the cache
-      Promise.all([
-        validConfig.storage.setItem(key(), value),
-        validConfig.storage.setItem(timeKey, Date.now().toString()),
-      ]).then(() => {
+      swr.persist(key, value).then(() => {
         swr.once(EmitterEvents.cacheHit).then((payload) => {
           expect(payload).toEqual({
             cacheKey: key,
@@ -349,6 +437,8 @@ describe('createStaleWhileRevalidateCache', () => {
       const value = 'value'
       const fn = jest.fn(() => value)
 
+      expect.assertions(2)
+
       swr.once(EmitterEvents.cacheGetFailed).then((payload) => {
         expect(payload).toEqual({
           cacheKey: key,
@@ -358,7 +448,10 @@ describe('createStaleWhileRevalidateCache', () => {
       })
 
       swr(key, fn).then((result) => {
-        expect(result).toEqual(value)
+        expect(result).toMatchObject({
+          value,
+          status: 'miss',
+        })
       })
     })
 
@@ -379,6 +472,8 @@ describe('createStaleWhileRevalidateCache', () => {
       const value = 'value'
       const fn = jest.fn(() => value)
 
+      expect.assertions(2)
+
       swr.once(EmitterEvents.cacheSetFailed).then((payload) => {
         expect(payload).toEqual({
           cacheKey: key,
@@ -388,7 +483,10 @@ describe('createStaleWhileRevalidateCache', () => {
       })
 
       swr(key, fn).then((result) => {
-        expect(result).toEqual(value)
+        expect(result).toMatchObject({
+          value,
+          status: 'miss',
+        })
       })
     })
   })
@@ -413,7 +511,16 @@ describe('createStaleWhileRevalidateCache', () => {
       const fn = jest.fn(() => 'something else')
       const result = await swr(key, fn)
 
-      expect(result).toEqual(value)
+      expect(result).toMatchObject({
+        value,
+        status: 'stale',
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
       expect(fn).toHaveBeenCalledTimes(1)
     })
   })

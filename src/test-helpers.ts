@@ -1,3 +1,5 @@
+import type { ResponseEnvelope } from '../types'
+
 export const mockedLocalStorage = (function () {
   let store: Record<string, any> = {}
 
@@ -13,3 +15,7 @@ export const mockedLocalStorage = (function () {
     },
   }
 })()
+
+export const valueFromEnvelope = <Value>(
+  envelope: ResponseEnvelope<Value>
+): Value => envelope.value

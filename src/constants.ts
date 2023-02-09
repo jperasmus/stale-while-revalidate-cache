@@ -9,3 +9,10 @@ export const EmitterEvents = {
   revalidate: 'revalidate',
   revalidateFailed: 'revalidateFailed',
 } as const
+
+export const CacheResponseStatus = {
+  FRESH: 'fresh',
+  STALE: 'stale',
+  EXPIRED: 'expired',
+  MISS: 'miss',
+} as const

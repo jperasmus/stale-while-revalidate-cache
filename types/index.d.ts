@@ -14,11 +14,24 @@ export interface Config {
 
 export type IncomingCacheKey = string | (() => string)
 
-export type StaleWhileRevalidateCache = <ReturnValue>(
+export type CacheStatus = 'fresh' | 'stale' | 'expired' | 'miss'
+
+export type ResponseEnvelope<CacheValue> = {
+  value: CacheValue
+  status: CacheStatus
+  minTimeToStale: number
+  maxTimeToLive: number
+  now: number
+  cachedAt: number
+  expireAt: number
+  staleAt: number
+}
+
+export type StaleWhileRevalidateCache = <FunctionReturnValue>(
   cacheKey: IncomingCacheKey,
-  fn: () => ReturnValue,
+  fn: () => FunctionReturnValue,
   configOverrides?: Partial<Config>
-) => Promise<ReturnValue>
+) => Promise<ResponseEnvelope<FunctionReturnValue>>
 
 export type StaticMethods = {
   persist: <CacheValue>(
