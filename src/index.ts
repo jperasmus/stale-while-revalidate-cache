@@ -24,6 +24,28 @@ export function createStaleWhileRevalidateCache(
   const cacheConfig = parseConfig(config)
   const emitter = createEmitter()
 
+  async function deleteValue({
+    cacheKey,
+    storage,
+  }: {
+    cacheKey: IncomingCacheKey
+    storage: Config['storage']
+  }): Promise<void> {
+    const key = getCacheKey(cacheKey)
+    const timeKey = createTimeCacheKey(key)
+
+    try {
+      if (!storage.removeItem) {
+        throw new Error('Storage does not support removeItem method')
+      }
+
+      await Promise.all([storage.removeItem(key), storage.removeItem(timeKey)])
+    } catch (error) {
+      emitter.emit(EmitterEvents.cacheRemoveFailed, { cacheKey, error })
+      throw error
+    }
+  }
+
   async function persistValue<CacheValue>({
     cacheKey,
     cacheValue,
@@ -183,6 +205,13 @@ export function createStaleWhileRevalidateCache(
     }
   }
 
+  const del: StaticMethods['delete'] = (cacheKey: IncomingCacheKey) => {
+    return deleteValue({
+      cacheKey,
+      storage: cacheConfig.storage,
+    })
+  }
+
   const persist: StaticMethods['persist'] = <CacheValue>(
     cacheKey: IncomingCacheKey,
     cacheValue: CacheValue
@@ -196,6 +225,7 @@ export function createStaleWhileRevalidateCache(
     })
   }
 
+  staleWhileRevalidate.delete = del
   staleWhileRevalidate.persist = persist
 
   return extendWithEmitterMethods(emitter, staleWhileRevalidate)

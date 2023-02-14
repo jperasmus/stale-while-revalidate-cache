@@ -4,6 +4,7 @@ export const EmitterEvents = {
   cacheStale: 'cacheStale',
   cacheExpired: 'cacheExpired',
   cacheGetFailed: 'cacheGetFailed',
+  cacheRemoveFailed: 'cacheRemoveFailed',
   cacheSetFailed: 'cacheSetFailed',
   invoke: 'invoke',
   revalidate: 'revalidate',

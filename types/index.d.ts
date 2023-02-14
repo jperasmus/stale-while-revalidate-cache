@@ -1,6 +1,7 @@
-interface Storage {
+export interface Storage {
   getItem(key: string): unknown | null | Promise<unknown | null>
   setItem(key: string, value: unknown): void | Promise<void>
+  removeItem?: (key: string) => unknown | null | Promise<unknown | null>
   [key: string]: any
 }
 
@@ -34,6 +35,7 @@ export type StaleWhileRevalidateCache = <FunctionReturnValue>(
 ) => Promise<ResponseEnvelope<FunctionReturnValue>>
 
 export type StaticMethods = {
+  delete: (cacheKey: IncomingCacheKey) => Promise<void>
   persist: <CacheValue>(
     cacheKey: IncomingCacheKey,
     cacheValue: CacheValue

@@ -88,7 +88,7 @@ const result = await swr(cacheKey, yourFunction, configOverrides)
 
 #### storage
 
-The `storage` property can be any object that have `getItem(cacheKey: string)` and `setItem(cacheKey: string, value: any)` methods on it. Because of this, in the browser, you could simply use `window.localStorage` as your `storage` object, but there are many other storage options that satisfies this requirement. Or you can build your own.
+The `storage` property can be any object that have `getItem(cacheKey: string)` and `setItem(cacheKey: string, value: any)` methods on it. If you want to use the `swr.delete(cacheKey)` method, the `storage` object needs to have a `removeItem(cacheKey: string)` method as well. Because of this, in the browser, you could simply use `window.localStorage` as your `storage` object, but there are many other storage options that satisfies this requirement. Or you can build your own.
 
 For instance, if you want to use Redis on the server:
 
@@ -106,6 +106,9 @@ const storage = {
     // Use px or ex depending on whether you use milliseconds or seconds for your ttl
     // It is recommended to set ttl to your maxTimeToLive (it has to be more than it)
     await redis.set(cacheKey, cacheValue, 'px', ttl)
+  },
+  async removeItem(cacheKey: string) {
+    await redis.del(cacheKey)
   },
 }
 
@@ -152,6 +155,18 @@ const result = await swr.persist(cacheKey, cacheValue)
 ```
 
 The value will be passed through the `serialize` method you optionally provided when you instantiated the `swr` helper.
+
+#### Manually delete from cache
+
+There is a convenience static method made available if you need to manually delete a cache entry from the underlying storage.
+
+```typescript
+const cacheKey = 'your-cache-key'
+
+await swr.delete(cacheKey)
+```
+
+The method returns a Promise that resolves or rejects depending on whether the delete was successful or not.
 
 ### Event Emitter
 
