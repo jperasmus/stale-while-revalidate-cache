@@ -524,4 +524,28 @@ describe('createStaleWhileRevalidateCache', () => {
       expect(fn).toHaveBeenCalledTimes(1)
     })
   })
+
+  describe('swr.delete()', () => {
+    it('should remove the cache value for given key including the time cache key', async () => {
+      const swr = createStaleWhileRevalidateCache(validConfig)
+
+      const key = 'delete key'
+      const value = 'value'
+
+      expect(mockedLocalStorage.getItem(key)).toEqual(null)
+      expect(mockedLocalStorage.getItem(createTimeCacheKey(key))).toEqual(null)
+
+      await swr.persist(key, value)
+
+      expect(mockedLocalStorage.getItem(key)).toEqual(value)
+      expect(mockedLocalStorage.getItem(createTimeCacheKey(key))).toEqual(
+        expect.any(String)
+      )
+
+      await swr.delete(key)
+
+      expect(mockedLocalStorage.getItem(key)).toEqual(null)
+      expect(mockedLocalStorage.getItem(createTimeCacheKey(key))).toEqual(null)
+    })
+  })
 })

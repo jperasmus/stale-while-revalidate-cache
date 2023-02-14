@@ -1,17 +1,20 @@
-import type { ResponseEnvelope } from '../types'
+import type { ResponseEnvelope, Storage } from '../types'
 
-export const mockedLocalStorage = (function () {
-  let store: Record<string, any> = {}
+export const mockedLocalStorage: Storage = (function () {
+  const store = new Map<string, any>()
 
   return {
-    getItem: function (key: string) {
-      return store[key] || null
+    clear() {
+      store.clear()
     },
-    setItem: function (key: string, value: any) {
-      store[key] = value.toString()
+    getItem(key: string) {
+      return store.has(key) ? store.get(key) : null
     },
-    clear: function () {
-      store = {}
+    removeItem(key: string) {
+      return store.delete(key)
+    },
+    setItem(key: string, value: any) {
+      store.set(key, value.toString())
     },
   }
 })()
