@@ -73,11 +73,11 @@ export function createStaleWhileRevalidateCache(
     }
   }
 
-  async function staleWhileRevalidate<FunctionReturnValue>(
+  async function staleWhileRevalidate<CacheValue>(
     cacheKey: IncomingCacheKey,
-    fn: () => FunctionReturnValue,
+    fn: () => CacheValue | Promise<CacheValue>,
     configOverrides?: Partial<Config>
-  ): Promise<ResponseEnvelope<Awaited<FunctionReturnValue>>> {
+  ): Promise<ResponseEnvelope<Awaited<CacheValue>>> {
     const { storage, minTimeToStale, maxTimeToLive, serialize, deserialize } =
       configOverrides
         ? parseConfig({ ...cacheConfig, ...configOverrides })
@@ -184,7 +184,7 @@ export function createStaleWhileRevalidateCache(
         now,
         staleAt: cachedAt + minTimeToStale,
         status: cacheStatus,
-        value: cachedValue as Awaited<FunctionReturnValue>,
+        value: cachedValue as Awaited<CacheValue>,
       }
     }
 
