@@ -277,7 +277,7 @@ async function fetchProductDetails(productId: string): Promise<Product> {
 
 const productId = 'product-123456'
 
-const result = await swr<Product>(productId, async () =>
+const result = await swr<Promise<Product>>(productId, async () =>
   fetchProductDetails(productId)
 )
 

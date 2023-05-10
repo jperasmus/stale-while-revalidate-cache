@@ -32,7 +32,7 @@ export type StaleWhileRevalidateCache = <FunctionReturnValue>(
   cacheKey: IncomingCacheKey,
   fn: () => FunctionReturnValue,
   configOverrides?: Partial<Config>
-) => Promise<ResponseEnvelope<FunctionReturnValue>>
+) => Promise<ResponseEnvelope<Awaited<FunctionReturnValue>>>
 
 export type StaticMethods = {
   delete: (cacheKey: IncomingCacheKey) => Promise<void>

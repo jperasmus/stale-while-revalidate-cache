@@ -59,8 +59,8 @@ describe('createStaleWhileRevalidateCache', () => {
       const swr = createStaleWhileRevalidateCache(validConfig)
       const key = 'key'
       const value = 'value'
-      const fn = jest.fn(() => value)
-      const result = await swr(key, fn)
+      const fn = jest.fn(async () => value)
+      const result = await swr(key, async () => await fn())
 
       expect(result).toMatchObject({
         value,
