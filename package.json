@@ -1,7 +1,6 @@
 {
   "version": "3.1.0",
   "name": "stale-while-revalidate-cache",
-  "author": "JP Erasmus",
   "license": "MIT",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -17,6 +16,17 @@
     "type": "git",
     "url": "https://github.com/jperasmus/stale-while-revalidate-cache.git"
   },
+  "author": {
+    "name": "JP Erasmus",
+    "email": "jperasmus11@gmail.com",
+    "url": "https://github.com/jperasmus"
+  },
+  "contributors": [
+    {
+      "name": "Andreas Pålsson",
+      "url": "https://github.com/andreaspalsson"
+    }
+  ],
   "scripts": {
     "clean": "rm -rf dist",
     "dev": "rollup -c -w",
