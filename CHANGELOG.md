@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## [3.1.2] - 2023-06-11
+
+### Fixed
+
+- Transpiled away any uses of the nullish coalescing operator (`??`) since Webpack 4 doesn't support it
+
 ## [3.1.1] - 2023-05-10
 
 ### Fixed
@@ -72,7 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add emitter events for when storage get and set fails
 
-[unreleased]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.1.1...HEAD
+[unreleased]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.1.2...HEAD
+[3.1.2]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v2.2.0...v3.0.0
