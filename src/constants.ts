@@ -11,8 +11,6 @@ export const EmitterEvents = {
   revalidateFailed: 'revalidateFailed',
 } as const
 
-export type EmitterEvents = (typeof EmitterEvents)[keyof typeof EmitterEvents]
-
 export const CacheResponseStatus = {
   FRESH: 'fresh',
   STALE: 'stale',
