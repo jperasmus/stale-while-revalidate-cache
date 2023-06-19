@@ -14,6 +14,8 @@ import {
 } from './event-emitter'
 import { createTimeCacheKey, getCacheKey, isNil, parseConfig } from './helpers'
 
+export { EmitterEvents }
+
 export type StaleWhileRevalidate = StaleWhileRevalidateCache &
   EmitterMethods &
   StaticMethods
