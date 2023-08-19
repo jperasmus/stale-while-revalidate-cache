@@ -2,6 +2,8 @@
 
 This small battle-tested TypeScript library is a storage-agnostic helper that implements a configurable stale-while-revalidate caching strategy for any functions, for any JavaScript environment.
 
+> The library will take care of deduplicating any function invocations (requests) for the same cache key so that making concurrent requests will not unnecessarily bypass your cache.
+
 ## Installation
 
 The library can be installed from [NPM](https://www.npmjs.com/package/stale-while-revalidate-cache) using your favorite package manager.
