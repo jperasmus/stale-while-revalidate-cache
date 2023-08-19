@@ -25,6 +25,7 @@ export function createStaleWhileRevalidateCache(
 ): StaleWhileRevalidate {
   const cacheConfig = parseConfig(config)
   const emitter = createEmitter()
+  const inFlightKeys = new Set<string>()
 
   async function deleteValue({
     cacheKey,
@@ -98,6 +99,30 @@ export function createStaleWhileRevalidateCache(
       now: number
     }>
 
+    if (inFlightKeys.has(key)) {
+      emitter.emit(EmitterEvents.cacheInFlight, { key, cacheKey })
+
+      let inFlightListener:
+        | ((eventData: Record<'key', string>) => void)
+        | null = null
+
+      await new Promise((resolve) => {
+        inFlightListener = (eventData: Record<'key', string>) => {
+          if (eventData.key === key) {
+            resolve(eventData)
+          }
+        }
+
+        emitter.on(EmitterEvents.cacheInFlightSettled, inFlightListener)
+      })
+
+      if (inFlightListener) {
+        emitter.off(EmitterEvents.cacheInFlightSettled, inFlightListener)
+      }
+    }
+
+    inFlightKeys.add(key)
+
     async function retrieveCachedValue(): RetrieveCachedValueResponse {
       const now = Date.now()
 
@@ -137,14 +162,12 @@ export function createStaleWhileRevalidateCache(
     async function revalidate({ cacheTime }: { cacheTime: number }) {
       try {
         emitter.emit(EmitterEvents.revalidate, { cacheKey, fn })
+        inFlightKeys.add(key)
 
         const result = await fn()
 
-        // Intentionally persisting asynchronously and not blocking since there is
-        // in any case a chance for a race condition to occur when using an external
-        // persistence store, like Redis, with multiple consumers. The impact is low.
         // Error handled in `persistValue` by emitting an event, so only need a no-op here
-        persistValue({
+        await persistValue({
           cacheValue: result,
           cacheKey,
           cacheTime,
@@ -156,6 +179,9 @@ export function createStaleWhileRevalidateCache(
       } catch (error) {
         emitter.emit(EmitterEvents.revalidateFailed, { cacheKey, fn, error })
         throw error
+      } finally {
+        inFlightKeys.delete(key)
+        emitter.emit(EmitterEvents.cacheInFlightSettled, { cacheKey, key })
       }
     }
 
@@ -176,6 +202,10 @@ export function createStaleWhileRevalidateCache(
         // Non-blocking so that revalidation runs while stale cache data is returned
         // Error handled in `revalidate` by emitting an event, so only need a no-op here
         revalidate({ cacheTime: Date.now() }).catch(() => {})
+      } else {
+        // When it is a pure cache hit, we are not revalidating, so we can remove the key from the in-flight set
+        inFlightKeys.delete(key)
+        emitter.emit(EmitterEvents.cacheInFlightSettled, { cacheKey, key })
       }
 
       return {
