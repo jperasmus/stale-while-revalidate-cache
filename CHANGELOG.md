@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+...
+
+## [3.2.0] - 2023-08-19
+
 ### Added
 
 - Functionality to deduplicate in-flight function invocations
@@ -90,7 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add emitter events for when storage get and set fails
 
-[unreleased]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.1.3...HEAD
+[unreleased]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.1.2...v3.2.0
 [3.1.3]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.1.2...v3.1.3
 [3.1.2]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.1.1...v3.1.2
 [3.1.1]: https://github.com/jperasmus/stale-while-revalidate-cache/compare/v3.1.0...v3.1.1
