@@ -6,6 +6,8 @@ export const EmitterEvents = {
   cacheGetFailed: 'cacheGetFailed',
   cacheRemoveFailed: 'cacheRemoveFailed',
   cacheSetFailed: 'cacheSetFailed',
+  cacheInFlight: 'cacheInFlight',
+  cacheInFlightSettled: 'cacheInFlightSettled',
   invoke: 'invoke',
   revalidate: 'revalidate',
   revalidateFailed: 'revalidateFailed',

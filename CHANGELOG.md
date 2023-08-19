@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-...
+### Added
+
+- Functionality to deduplicate in-flight function invocations
+
+### Change
+
+- This should be considered an implementation detail but as part of the deduplication functionality, there has been a subtle change to the library where it will wait for the cache persistence before returning the result. Theoretically, it means an uncached request will be slower for the time it takes to write to your cache. It's a trade-off.
 
 ## [3.1.3] - 2023-06-19
 

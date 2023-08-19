@@ -202,6 +202,14 @@ Emitted when an error occurs while trying to retrieve a value from the given `st
 
 Emitted when an error occurs while trying to persist a value to the given `storage`, ie. if `storage.setItem()` throws. Cache persistence happens asynchronously, so you can't expect this error to bubble up to the main revalidate function. If you want to be aware of this error, you have to subscribe to this event.
 
+#### cacheInFlight
+
+Emitted when a duplicate function invocation occurs, ie. a new request is made while a previous one is not settled yet.
+
+#### cacheInFlightSettled
+
+Emitted when an in-flight request is settled (resolved or rejected). This event is emitted at the end of either a cache lookup or a revalidation request.
+
 #### revalidate
 
 Emitted whenever the task function is invoked. It will always be invoked except when the cache is considered fresh, NOT stale or expired.

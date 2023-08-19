@@ -228,6 +228,47 @@ describe('createStaleWhileRevalidateCache', () => {
       expect(fn1).toHaveBeenCalledTimes(1)
       expect(fn2).toHaveBeenCalledTimes(1)
     })
+
+    it('should deduplicate any concurrent requests with the same key', async () => {
+      // Explicitly set minTimeToStale to 1_000 and maxTimeToLive to Infinity so that the cache is not stale, but also not dead for second invocation
+      const swr = createStaleWhileRevalidateCache({
+        ...validConfig,
+        minTimeToStale: 1_000,
+        maxTimeToLive: Infinity,
+      })
+      const key = 'duplicate-example'
+      const value1 = 'value 1'
+      const value2 = 'value 2'
+      const fn1 = jest.fn(() => value1)
+      const fn2 = jest.fn(() => value2)
+
+      const promise1 = swr(key, fn1)
+      const promise2 = swr(key, fn2)
+      const [result1, result2] = await Promise.all([promise1, promise2])
+
+      expect(result1).toMatchObject({
+        value: value1,
+        status: 'miss',
+        minTimeToStale: 1_000,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
+      expect(result2).toMatchObject({
+        value: value1, // Still return value1 since it is from the cache
+        status: 'fresh',
+        minTimeToStale: 1_000,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
+      expect(fn1).toHaveBeenCalledTimes(1)
+      expect(fn2).not.toHaveBeenCalled()
+    })
   })
 
   describe('EmitterEvents', () => {
