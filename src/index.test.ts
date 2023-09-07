@@ -160,7 +160,6 @@ describe('createStaleWhileRevalidateCache', () => {
       expect(mockedLocalStorage.getItem(key)).toEqual(JSON.stringify(value))
     })
 
-
     it('should not revalidate if the value is cached and still fresh', async () => {
       // Set minTimeToStale to 1 second so that the cache is fresh for second invocation
       const swr = createStaleWhileRevalidateCache({
