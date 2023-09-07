@@ -79,7 +79,7 @@ describe('createStaleWhileRevalidateCache', () => {
       )
     })
 
-    it('should invoke custom serializer and deserializer methods', async () => {
+    it('should invoke custom serializer and deserializer methods when reading from cache', async () => {
       const customSerialize = jest.fn(JSON.stringify)
       const customDeserialize = jest.fn(JSON.parse)
       const swr = createStaleWhileRevalidateCache({
@@ -106,7 +106,60 @@ describe('createStaleWhileRevalidateCache', () => {
       expect(customSerialize).toHaveBeenCalledTimes(1)
       expect(customDeserialize).toHaveBeenCalledTimes(0)
       expect(mockedLocalStorage.getItem(key)).toEqual(JSON.stringify(value))
+
+      const result2 = await swr(key, fn)
+
+      expect(result2).toMatchObject({
+        value: JSON.parse(JSON.stringify(value)),
+        status: 'stale',
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
+      expect(fn).toHaveBeenCalledTimes(2)
+      expect(customSerialize).toHaveBeenCalledTimes(2)
+      expect(customDeserialize).toHaveBeenCalledTimes(1)
+      expect(mockedLocalStorage.getItem(key)).toEqual(JSON.stringify(value))
     })
+
+    it('should not invoke custom deserializer method when cache value of undefined returned', async () => {
+      const customSerialize = jest.fn(JSON.stringify)
+      const customDeserialize = jest.fn(JSON.parse)
+      const swr = createStaleWhileRevalidateCache({
+        ...validConfig,
+        storage: {
+          ...validConfig.storage,
+          getItem() {
+            return undefined
+          },
+        },
+        serialize: customSerialize,
+        deserialize: customDeserialize,
+      })
+      const key = 'key'
+      const value = { value: 'value' }
+      const fn = jest.fn(() => value)
+      const result = await swr(key, fn)
+
+      expect(result).toMatchObject({
+        value: JSON.parse(JSON.stringify(value)),
+        status: 'miss',
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
+      expect(fn).toHaveBeenCalledTimes(1)
+      expect(customSerialize).toHaveBeenCalledTimes(1)
+      expect(customDeserialize).toHaveBeenCalledTimes(0)
+      expect(mockedLocalStorage.getItem(key)).toEqual(JSON.stringify(value))
+    })
+
 
     it('should not revalidate if the value is cached and still fresh', async () => {
       // Set minTimeToStale to 1 second so that the cache is fresh for second invocation
