@@ -104,7 +104,7 @@ describe('createStaleWhileRevalidateCache', () => {
       })
       expect(fn).toHaveBeenCalledTimes(1)
       expect(customSerialize).toHaveBeenCalledTimes(1)
-      expect(customDeserialize).toHaveBeenCalledTimes(1)
+      expect(customDeserialize).toHaveBeenCalledTimes(0)
       expect(mockedLocalStorage.getItem(key)).toEqual(JSON.stringify(value))
     })
 
