@@ -1,5 +1,5 @@
 {
-  "version": "3.2.0",
+  "version": "3.2.1",
   "name": "stale-while-revalidate-cache",
   "license": "MIT",
   "main": "dist/index.js",
@@ -29,6 +29,14 @@
     {
       "name": "Andrew Tereshkin",
       "url": "https://github.com/upteran"
+    },
+    {
+      "name": "Paul Dixon",
+      "url": "https://github.com/mintbridge"
+    },
+    {
+      "name": "Antonio Guerra",
+      "url": "https://github.com/antonioguerra"
     }
   ],
   "scripts": {
