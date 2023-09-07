@@ -133,11 +133,12 @@ export function createStaleWhileRevalidateCache(
           storage.getItem(timeKey),
         ])
 
-        cachedValue = deserialize(cachedValue)
-
         if (isNil(cachedValue) || isNil(cachedAt)) {
           return { cachedValue: null, cachedAge: 0, now }
         }
+
+        cachedValue = deserialize(cachedValue)
+
         const cachedAge = now - Number(cachedAt)
 
         if (cachedAge > maxTimeToLive) {
