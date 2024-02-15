@@ -5,10 +5,17 @@ export interface Storage {
   [key: string]: any
 }
 
+export type RetryFn = (failureCount: number, error?: unknown) => boolean
+export type Retry = boolean | number | RetryFn
+export type RetryDelayFn = (invocationCount: number) => number
+export type RetryDelay = number | RetryDelayFn
+
 export interface Config {
   minTimeToStale?: number
   maxTimeToLive?: number
   storage: Storage
+  retry?: Retry
+  retryDelay?: RetryDelay
   serialize?: (value: any) => any
   deserialize?: (value: any) => any
 }

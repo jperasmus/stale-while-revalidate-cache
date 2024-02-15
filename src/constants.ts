@@ -19,3 +19,8 @@ export const CacheResponseStatus = {
   EXPIRED: 'expired',
   MISS: 'miss',
 } as const
+
+export const DefaultRetryDelay = {
+  MIN_MS: 1000,
+  MAX_MS: 30000,
+}

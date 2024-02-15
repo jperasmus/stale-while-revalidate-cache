@@ -12,7 +12,13 @@ import {
   extendWithEmitterMethods,
   createEmitter,
 } from './event-emitter'
-import { createTimeCacheKey, getCacheKey, isNil, parseConfig } from './helpers'
+import {
+  createTimeCacheKey,
+  getCacheKey,
+  isNil,
+  parseConfig,
+  waitFor,
+} from './helpers'
 
 export { EmitterEvents }
 
@@ -81,15 +87,23 @@ export function createStaleWhileRevalidateCache(
     fn: () => CacheValue | Promise<CacheValue>,
     configOverrides?: Partial<Config>
   ): Promise<ResponseEnvelope<Awaited<CacheValue>>> {
-    const { storage, minTimeToStale, maxTimeToLive, serialize, deserialize } =
-      configOverrides
-        ? parseConfig({ ...cacheConfig, ...configOverrides })
-        : cacheConfig
+    const {
+      storage,
+      minTimeToStale,
+      maxTimeToLive,
+      serialize,
+      deserialize,
+      retry,
+      retryDelay,
+    } = configOverrides
+      ? parseConfig({ ...cacheConfig, ...configOverrides })
+      : cacheConfig
     emitter.emit(EmitterEvents.invoke, { cacheKey, fn })
 
     const key = getCacheKey(cacheKey)
     const timeKey = createTimeCacheKey(key)
 
+    let invocationCount = 0
     let cacheStatus: CacheStatus = CacheResponseStatus.MISS
 
     type RetrieveCachedValueResponse = Promise<{
@@ -162,10 +176,28 @@ export function createStaleWhileRevalidateCache(
 
     async function revalidate({ cacheTime }: { cacheTime: number }) {
       try {
-        emitter.emit(EmitterEvents.revalidate, { cacheKey, fn })
-        inFlightKeys.add(key)
+        if (invocationCount === 0) {
+          emitter.emit(EmitterEvents.revalidate, { cacheKey, fn })
+          inFlightKeys.add(key)
+        }
 
-        const result = await fn()
+        invocationCount++
+
+        let result: Awaited<CacheValue>
+
+        try {
+          result = await fn()
+        } catch (error) {
+          if (!retry(invocationCount, error)) {
+            throw error
+          }
+
+          const delay = retryDelay(invocationCount)
+
+          await waitFor(delay)
+
+          return revalidate({ cacheTime })
+        }
 
         // Error handled in `persistValue` by emitting an event, so only need a no-op here
         await persistValue({

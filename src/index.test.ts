@@ -321,6 +321,62 @@ describe('createStaleWhileRevalidateCache', () => {
       expect(fn1).toHaveBeenCalledTimes(1)
       expect(fn2).not.toHaveBeenCalled()
     })
+
+    describe('Retry', () => {
+      it('should allow retrying the request using a number of retries', async () => {
+        const swr = createStaleWhileRevalidateCache({
+          ...validConfig,
+          minTimeToStale: 0,
+          maxTimeToLive: Infinity,
+          retry: 3,
+          retryDelay: 0,
+        })
+        const key = 'retry-example'
+        const error = new Error('beep boop')
+        const fn = jest.fn(() => {
+          throw error
+        })
+
+        expect.assertions(2)
+
+        try {
+          await swr(key, fn)
+
+          fail('Expected swr to throw an error')
+        } catch (err) {
+          expect(err).toBe(error)
+        } finally {
+          expect(fn).toHaveBeenCalledTimes(4) // Initial invocation + 3 retries
+        }
+      })
+    })
+
+    it('should allow retrying the request using a custom retry function', async () => {
+      const swr = createStaleWhileRevalidateCache({
+        ...validConfig,
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+        retry: (failureCount, _error) => failureCount < 3,
+        retryDelay: () => 10,
+      })
+      const key = 'retry-example'
+      const error = new Error('beep boop')
+      const fn = jest.fn(() => {
+        throw error
+      })
+
+      expect.assertions(2)
+
+      try {
+        await swr(key, fn)
+
+        fail('Expected swr to throw an error')
+      } catch (err) {
+        expect(err).toBe(error)
+      } finally {
+        expect(fn).toHaveBeenCalledTimes(3) // Initial invocation + 2 retries (testing failureCount < 3)
+      }
+    })
   })
 
   describe('EmitterEvents', () => {

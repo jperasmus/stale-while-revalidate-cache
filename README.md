@@ -131,6 +131,26 @@ Default: `Infinity`
 
 Milliseconds until a cached value should be considered expired. If a cached value is expired, it will be discarded and the task function will always be invoked and waited for before returning, ie. no background revalidation.
 
+#### retry
+
+Default: `false` (no retries)
+
+- `retry: true` will infinitely retry failing tasks.
+- `retry: false` will disable retries.
+- `retry: 5` will retry failing tasks 5 times before bubbling up the final error thrown by task function.
+- `retry: (failureCount: number, error: unknown) => ...` allows for custom logic based on why the task failed.
+
+#### retryDelay
+
+Default: `(invocationCount: number) => Math.min(1000 * 2 ** invocationCount, 30000)`
+
+The default configuration is set to double (starting at 1000ms) for each invocation, but not exceed 30 seconds.
+
+This setting has no effect if `retry` is `false`.
+
+- `retryDelay: 1000` will always wait 1000 milliseconds before retrying the task
+- `retryDelay: (invocationCount) => 1000 * 2 ** invocationCount` will infinitely double the retry delay time until the max number of retries is reached.
+
 #### serialize
 
 If your storage mechanism can't directly persist the value returned from your task function, supply a `serialize` method that will be invoked with the result from the task function and this will be persisted to your storage.
