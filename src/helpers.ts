@@ -1,4 +1,5 @@
-import type { Config, IncomingCacheKey } from '../types'
+import type { Config, IncomingCacheKey, RetryDelayFn, RetryFn } from '../types'
+import { DefaultRetryDelay } from './constants'
 
 type Fn = (...args: any[]) => any
 
@@ -19,6 +20,15 @@ export const getCacheKey = (cacheKey: IncomingCacheKey) =>
 export const createTimeCacheKey = (cacheKey: string) => `${cacheKey}_time`
 
 export const passThrough = (value: unknown) => value
+
+export const waitFor = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms))
+
+const defaultRetryDelay: RetryDelayFn = (invocationCount) =>
+  Math.min(
+    DefaultRetryDelay.MIN_MS * 2 ** invocationCount,
+    DefaultRetryDelay.MAX_MS
+  )
 
 export function parseConfig(config: Config) {
   if (!isPlainObject(config)) {
@@ -42,6 +52,32 @@ export function parseConfig(config: Config) {
     config.maxTimeToLive === Infinity
       ? Infinity
       : Math.min(config.maxTimeToLive ?? 0, Number.MAX_SAFE_INTEGER) || Infinity
+
+  const retry: RetryFn = (failureCount, error) => {
+    if (!config.retry) return false
+
+    if (typeof config.retry === 'number') {
+      return failureCount <= config.retry
+    }
+
+    if (isFunction(config.retry)) {
+      return config.retry(failureCount, error)
+    }
+
+    return !!config.retry
+  }
+  const retryDelay: RetryDelayFn = (invocationCount) => {
+    if (typeof config.retryDelay === 'number') {
+      return config.retryDelay
+    }
+
+    if (isFunction(config.retryDelay)) {
+      return config.retryDelay(invocationCount)
+    }
+
+    return defaultRetryDelay(invocationCount)
+  }
+
   const serialize = isFunction(config.serialize)
     ? config.serialize
     : passThrough
@@ -57,6 +93,8 @@ export function parseConfig(config: Config) {
     storage,
     minTimeToStale,
     maxTimeToLive,
+    retry,
+    retryDelay,
     serialize,
     deserialize,
   }
