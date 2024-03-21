@@ -178,6 +178,18 @@ const result = await swr.persist(cacheKey, cacheValue)
 
 The value will be passed through the `serialize` method you optionally provided when you instantiated the `swr` helper.
 
+#### Manually read from cache
+
+There is a convenience static method made available if you need to simply read from the underlying storage without triggering revalidation. Sometimes you just want to know if there is a value in the cache for a given key.
+
+```typescript
+const cacheKey = 'your-cache-key'
+
+const resultPayload = await swr.retrieve(cacheKey)
+```
+
+The cached value will be passed through the `deserialize` method you optionally provided when you instantiated the `swr` helper.
+
 #### Manually delete from cache
 
 There is a convenience static method made available if you need to manually delete a cache entry from the underlying storage.
