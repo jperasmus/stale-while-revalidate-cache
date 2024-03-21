@@ -3,6 +3,7 @@ import type {
   Config,
   IncomingCacheKey,
   ResponseEnvelope,
+  RetrieveCachedValueResponse,
   StaleWhileRevalidateCache,
   StaticMethods,
 } from '../types'
@@ -82,6 +83,45 @@ export function createStaleWhileRevalidateCache(
     }
   }
 
+  async function retrieveValue<CacheValue>({
+    cacheKey,
+    storage,
+    deserialize,
+  }: {
+    cacheKey: IncomingCacheKey
+    storage: Config['storage']
+    deserialize: NonNullable<Config['deserialize']>
+  }): Promise<RetrieveCachedValueResponse<CacheValue>> {
+    const now = Date.now()
+    const key = getCacheKey(cacheKey)
+    const timeKey = createTimeCacheKey(key)
+
+    try {
+      const [cachedValue, cachedAt] = await Promise.all([
+        storage.getItem(key),
+        storage.getItem(timeKey),
+      ])
+
+      if (
+        isNil(cachedValue) ||
+        isNil(cachedAt) ||
+        Number.isNaN(Number(cachedAt))
+      ) {
+        return { cachedValue: null, cachedAge: 0, now }
+      }
+
+      return {
+        cachedValue: deserialize(cachedValue) as CacheValue | null,
+        cachedAge: now - Number(cachedAt),
+        cachedAt: Number(cachedAt),
+        now,
+      }
+    } catch (error) {
+      emitter.emit(EmitterEvents.cacheGetFailed, { cacheKey, error })
+      throw error
+    }
+  }
+
   async function staleWhileRevalidate<CacheValue>(
     cacheKey: IncomingCacheKey,
     fn: () => CacheValue | Promise<CacheValue>,
@@ -105,13 +145,6 @@ export function createStaleWhileRevalidateCache(
 
     let invocationCount = 0
     let cacheStatus: CacheStatus = CacheResponseStatus.MISS
-
-    type RetrieveCachedValueResponse = Promise<{
-      cachedValue: unknown | null
-      cachedAge: number
-      cachedAt?: number
-      now: number
-    }>
 
     if (inFlightKeys.has(key)) {
       emitter.emit(EmitterEvents.cacheInFlight, { key, cacheKey })
@@ -137,7 +170,9 @@ export function createStaleWhileRevalidateCache(
 
     inFlightKeys.add(key)
 
-    async function retrieveCachedValue(): RetrieveCachedValueResponse {
+    async function retrieveCachedValue(): Promise<
+      RetrieveCachedValueResponse<unknown>
+    > {
       const now = Date.now()
 
       try {
@@ -290,8 +325,19 @@ export function createStaleWhileRevalidateCache(
     })
   }
 
+  const retrieve: StaticMethods['retrieve'] = async <CacheValue>(
+    cacheKey: IncomingCacheKey
+  ) => {
+    return retrieveValue<CacheValue>({
+      cacheKey,
+      storage: cacheConfig.storage,
+      deserialize: cacheConfig.deserialize,
+    })
+  }
+
   staleWhileRevalidate.delete = del
   staleWhileRevalidate.persist = persist
+  staleWhileRevalidate.retrieve = retrieve
 
   return extendWithEmitterMethods(emitter, staleWhileRevalidate)
 }
