@@ -697,4 +697,47 @@ describe('createStaleWhileRevalidateCache', () => {
       expect(mockedLocalStorage.getItem(createTimeCacheKey(key))).toEqual(null)
     })
   })
+
+  describe('swr.retrieve()', () => {
+    it('should return the cache value and metadata for given key', async () => {
+      const swr = createStaleWhileRevalidateCache(validConfig)
+
+      const key = 'retrieve key'
+      const value = 'value'
+
+      const now = Date.now()
+
+      // Manually set the value in the cache
+      await Promise.all([
+        validConfig.storage.setItem(key, value),
+        validConfig.storage.setItem(
+          createTimeCacheKey(key),
+          (now + 10000).toString() // 10 seconds in the future
+        ),
+      ])
+
+      const result = await swr.retrieve(key)
+
+      expect(result).toMatchObject({
+        cachedValue: value,
+        cachedAge: expect.any(Number),
+        cachedAt: expect.any(Number),
+        now: expect.any(Number),
+      })
+    })
+
+    it('should return null for cachedValue if the cache value is not found', async () => {
+      const swr = createStaleWhileRevalidateCache(validConfig)
+
+      const key = 'retrieve missing key'
+
+      const result = await swr.retrieve(key)
+
+      expect(result).toMatchObject({
+        cachedValue: null,
+        cachedAge: 0,
+        now: expect.any(Number),
+      })
+    })
+  })
 })

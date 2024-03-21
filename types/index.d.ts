@@ -24,6 +24,13 @@ export type IncomingCacheKey = string | (() => string)
 
 export type CacheStatus = 'fresh' | 'stale' | 'expired' | 'miss'
 
+export type RetrieveCachedValueResponse<CacheValue> = {
+  cachedValue: CacheValue | null
+  cachedAge: number
+  cachedAt?: number
+  now: number
+}
+
 export type ResponseEnvelope<CacheValue> = {
   value: CacheValue
   status: CacheStatus
@@ -43,6 +50,9 @@ export type StaleWhileRevalidateCache = <CacheValue>(
 
 export type StaticMethods = {
   delete: (cacheKey: IncomingCacheKey) => Promise<void>
+  retrieve: <CacheValue>(
+    cacheKey: IncomingCacheKey
+  ) => Promise<RetrieveCachedValueResponse<CacheValue>>
   persist: <CacheValue>(
     cacheKey: IncomingCacheKey,
     cacheValue: CacheValue
