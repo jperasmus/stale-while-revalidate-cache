@@ -104,7 +104,7 @@ const storage = {
   async getItem(cacheKey: string) {
     return redis.get(cacheKey)
   },
-  async setItem(cacheKey: string, cacheValue: any, additionalOptions: StorageOptions) {
+  async setItem(cacheKey: string, cacheValue: any, persistOptions: PersistOptions) {
     // Use px or ex depending on whether you use milliseconds or seconds for your ttl
     // It is recommended to set ttl to your maxTimeToLive (it has to be more than it)
     await redis.set(cacheKey, cacheValue, 'px', ttl)
@@ -183,8 +183,8 @@ Additional options can be passed as a third argument and propagated to the stora
 ```typescript
 const cacheKey = 'your-cache-key'
 const cacheValue = { something: 'useful' }
-const additionalOptions = { overrideOption: 1000 }
-const result = await swr.persist(cacheKey, cacheValue, additionalOptions)
+const persistOptions = { overrideOption: 1000 }
+const result = await swr.persist(cacheKey, cacheValue, persistOptions)
 ```
 
 
