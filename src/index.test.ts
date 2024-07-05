@@ -672,6 +672,44 @@ describe('createStaleWhileRevalidateCache', () => {
       })
       expect(fn).toHaveBeenCalledTimes(1)
     })
+
+    it('should persist given cache value for given key with custom storage configuration', async () => {
+      const swr = createStaleWhileRevalidateCache(validConfig)
+
+      const key = 'persist key'
+      const value = 'value'
+      const options = {
+        ttl: 1000,
+      }
+
+      expect(mockedLocalStorage.getItem(key)).toEqual(null)
+      expect(mockedLocalStorage.getItem(createTimeCacheKey(key))).toEqual(null)
+
+      const spy = jest.spyOn(mockedLocalStorage, 'setItem')
+      await swr.persist(key, value, options)
+
+      expect(spy).toHaveBeenCalledWith(key, value, options)
+
+      expect(mockedLocalStorage.getItem(key)).toEqual(value)
+      expect(mockedLocalStorage.getItem(createTimeCacheKey(key))).toEqual(
+        expect.any(String)
+      )
+
+      const fn = jest.fn(() => 'something else')
+      const result = await swr(key, fn)
+
+      expect(result).toMatchObject({
+        value,
+        status: 'stale',
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+        now: expect.any(Number),
+        cachedAt: expect.any(Number),
+        expireAt: Infinity,
+        staleAt: expect.any(Number),
+      })
+      expect(fn).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('swr.delete()', () => {
