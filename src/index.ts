@@ -6,6 +6,7 @@ import type {
   RetrieveCachedValueResponse,
   StaleWhileRevalidateCache,
   StaticMethods,
+  PersistOptions,
 } from '../types'
 import { CacheResponseStatus, EmitterEvents } from './constants'
 import {
@@ -62,20 +63,22 @@ export function createStaleWhileRevalidateCache(
     cacheTime,
     serialize,
     storage,
+    persistOptions,
   }: {
     cacheKey: IncomingCacheKey
     cacheValue: CacheValue
     cacheTime: number
     serialize: NonNullable<Config['serialize']>
     storage: Config['storage']
+    persistOptions?: PersistOptions
   }): Promise<void> {
     const key = getCacheKey(cacheKey)
     const timeKey = createTimeCacheKey(key)
 
     try {
       await Promise.all([
-        storage.setItem(key, serialize(cacheValue)),
-        storage.setItem(timeKey, cacheTime.toString()),
+        storage.setItem(key, serialize(cacheValue), persistOptions),
+        storage.setItem(timeKey, cacheTime.toString(), persistOptions),
       ])
     } catch (error) {
       emitter.emit(EmitterEvents.cacheSetFailed, { cacheKey, error })
@@ -314,7 +317,8 @@ export function createStaleWhileRevalidateCache(
 
   const persist: StaticMethods['persist'] = <CacheValue>(
     cacheKey: IncomingCacheKey,
-    cacheValue: CacheValue
+    cacheValue: CacheValue,
+    persistOptions?: PersistOptions
   ) => {
     return persistValue({
       cacheKey,
@@ -322,6 +326,7 @@ export function createStaleWhileRevalidateCache(
       cacheTime: Date.now(),
       serialize: cacheConfig.serialize,
       storage: cacheConfig.storage,
+      persistOptions,
     })
   }
 

@@ -104,7 +104,7 @@ const storage = {
   async getItem(cacheKey: string) {
     return redis.get(cacheKey)
   },
-  async setItem(cacheKey: string, cacheValue: any) {
+  async setItem(cacheKey: string, cacheValue: any, additionalOptions: StorageOptions) {
     // Use px or ex depending on whether you use milliseconds or seconds for your ttl
     // It is recommended to set ttl to your maxTimeToLive (it has to be more than it)
     await redis.set(cacheKey, cacheValue, 'px', ttl)
@@ -177,6 +177,16 @@ const result = await swr.persist(cacheKey, cacheValue)
 ```
 
 The value will be passed through the `serialize` method you optionally provided when you instantiated the `swr` helper.
+
+Additional options can be passed as a third argument and propagated to the storage's `setItem` method.
+
+```typescript
+const cacheKey = 'your-cache-key'
+const cacheValue = { something: 'useful' }
+const additionalOptions = { overrideOption: 1000 }
+const result = await swr.persist(cacheKey, cacheValue, additionalOptions)
+```
+
 
 #### Manually read from cache
 
