@@ -1,5 +1,5 @@
 {
-  "version": "3.4.0",
+  "version": "3.4.1",
   "name": "stale-while-revalidate-cache",
   "license": "MIT",
   "main": "dist/index.js",
