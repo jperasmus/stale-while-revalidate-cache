@@ -17,7 +17,8 @@ export const isPlainObject = (value: unknown) =>
 export const getCacheKey = (cacheKey: IncomingCacheKey) =>
   isFunction(cacheKey) ? String(cacheKey()) : String(cacheKey)
 
-export const createTimeCacheKey = (cacheKey: string) => `${cacheKey}_time`
+export const createTimeCacheKey = (cacheKey: string) =>
+  `${cacheKey}__swr_time__`
 
 export const passThrough = (value: unknown) => value
 
