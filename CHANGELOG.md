@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## [3.4.1] - 2025-09-09
+
+### Fixed
+
+- Updated internal time cache key to reduce the likelihood of clashes happening with user-provided cache keys (thanks @mmkal)
+
 ## [3.4.0] - 2024-03-21
 
 ### Added
