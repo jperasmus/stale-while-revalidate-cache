@@ -1,6 +1,10 @@
 export interface Storage {
   getItem(key: string): unknown | null | Promise<unknown | null>
-  setItem(key: string, value: unknown): void | Promise<void>
+  setItem(
+    key: string,
+    value: unknown,
+    persistOptions?: PersistOptions
+  ): void | Promise<void>
   removeItem?: (key: string) => unknown | null | Promise<unknown | null>
   [key: string]: any
 }
@@ -42,6 +46,8 @@ export type ResponseEnvelope<CacheValue> = {
   staleAt: number
 }
 
+export type PersistOptions = Record<string, any>
+
 export type StaleWhileRevalidateCache = <CacheValue>(
   cacheKey: IncomingCacheKey,
   fn: () => CacheValue | Promise<CacheValue>,
@@ -55,6 +61,7 @@ export type StaticMethods = {
   ) => Promise<RetrieveCachedValueResponse<CacheValue>>
   persist: <CacheValue>(
     cacheKey: IncomingCacheKey,
-    cacheValue: CacheValue
+    cacheValue: CacheValue,
+    persistOptions?: PersistOptions
   ) => Promise<void>
 }
