@@ -238,11 +238,11 @@ Emitted when an error occurs while trying to persist a value to the given `stora
 
 #### cacheInFlight
 
-Emitted when a duplicate function invocation occurs, ie. a new request is made while a previous one is not settled yet.
+Emitted when an invocation has to wait for an in-flight revalidation of the same key, ie. there is no usable cached value to serve and a request for that key is already on its way. A stale cached value is always served immediately, so it never triggers this event.
 
 #### cacheInFlightSettled
 
-Emitted when an in-flight request is settled (resolved or rejected). This event is emitted at the end of either a cache lookup or a revalidation request.
+Emitted when an in-flight revalidation request is settled (resolved or rejected).
 
 #### revalidate
 

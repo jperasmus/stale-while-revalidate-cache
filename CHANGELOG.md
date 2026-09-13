@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-...
+### Fixed
+
+- In-flight deduplication no longer withholds stale cached values. The deduplication gate now runs after the cache lookup, so a stale value is served immediately while its revalidation happens in the background ([#48](https://github.com/jperasmus/stale-while-revalidate-cache/issues/48))
+- Invocations waiting for an in-flight revalidation now await a per-key promise instead of each registering a listener on the shared emitter, removing the superlinear wake-up cost under high concurrency ([#48](https://github.com/jperasmus/stale-while-revalidate-cache/issues/48))
 
 ## [3.4.1] - 2025-09-09
 

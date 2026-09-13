@@ -32,7 +32,9 @@ export function createStaleWhileRevalidateCache(
 ): StaleWhileRevalidate {
   const cacheConfig = parseConfig(config)
   const emitter = createEmitter()
-  const inFlightKeys = new Set<string>()
+  // Tracks the revalidation currently in flight per cache key so that concurrent
+  // invocations reuse it instead of triggering duplicate upstream requests
+  const inFlightRevalidations = new Map<string, Promise<unknown>>()
 
   async function deleteValue({
     cacheKey,
@@ -146,30 +148,6 @@ export function createStaleWhileRevalidateCache(
     let invocationCount = 0
     let cacheStatus: CacheStatus = CacheResponseStatus.MISS
 
-    if (inFlightKeys.has(key)) {
-      emitter.emit(EmitterEvents.cacheInFlight, { key, cacheKey })
-
-      let inFlightListener:
-        | ((eventData: Record<'key', string>) => void)
-        | null = null
-
-      await new Promise((resolve) => {
-        inFlightListener = (eventData: Record<'key', string>) => {
-          if (eventData.key === key) {
-            resolve(eventData)
-          }
-        }
-
-        emitter.on(EmitterEvents.cacheInFlightSettled, inFlightListener)
-      })
-
-      if (inFlightListener) {
-        emitter.off(EmitterEvents.cacheInFlightSettled, inFlightListener)
-      }
-    }
-
-    inFlightKeys.add(key)
-
     async function retrieveCachedValue(): Promise<
       RetrieveCachedValueResponse<unknown>
     > {
@@ -213,7 +191,6 @@ export function createStaleWhileRevalidateCache(
       try {
         if (invocationCount === 0) {
           emitter.emit(EmitterEvents.revalidate, { cacheKey, fn })
-          inFlightKeys.add(key)
         }
 
         invocationCount++
@@ -247,14 +224,51 @@ export function createStaleWhileRevalidateCache(
       } catch (error) {
         emitter.emit(EmitterEvents.revalidateFailed, { cacheKey, fn, error })
         throw error
-      } finally {
-        inFlightKeys.delete(key)
-        emitter.emit(EmitterEvents.cacheInFlightSettled, { cacheKey, key })
       }
     }
 
-    const { cachedValue, cachedAge, cachedAt, now } =
-      await retrieveCachedValue()
+    // Guarantees a single upstream request per cache key. Invocations that need
+    // the value (cache miss or expired) can await the returned promise, while
+    // stale invocations let it settle in the background.
+    function revalidateOnce({ cacheTime }: { cacheTime: number }) {
+      const alreadyInFlight = inFlightRevalidations.get(key)
+
+      if (alreadyInFlight) {
+        return alreadyInFlight
+      }
+
+      const revalidation: Promise<unknown> = revalidate({ cacheTime }).finally(
+        () => {
+          if (inFlightRevalidations.get(key) === revalidation) {
+            inFlightRevalidations.delete(key)
+          }
+
+          emitter.emit(EmitterEvents.cacheInFlightSettled, { cacheKey, key })
+        }
+      )
+
+      inFlightRevalidations.set(key, revalidation)
+
+      return revalidation
+    }
+
+    let { cachedValue, cachedAge, cachedAt, now } = await retrieveCachedValue()
+
+    // Only wait for an in-flight revalidation when there is nothing usable in the
+    // cache, otherwise a (stale) cached value would be withheld from the caller
+    if (isNil(cachedValue) || isNil(cachedAt)) {
+      const alreadyInFlight = inFlightRevalidations.get(key)
+
+      if (alreadyInFlight) {
+        emitter.emit(EmitterEvents.cacheInFlight, { key, cacheKey })
+
+        // Failures are reported by the invocation that started the revalidation,
+        // so look the value up again either way
+        await alreadyInFlight.catch(() => {})
+        ;({ cachedValue, cachedAge, cachedAt, now } =
+          await retrieveCachedValue())
+      }
+    }
 
     if (!isNil(cachedValue) && !isNil(cachedAt)) {
       cacheStatus = CacheResponseStatus.FRESH
@@ -269,11 +283,7 @@ export function createStaleWhileRevalidateCache(
         })
         // Non-blocking so that revalidation runs while stale cache data is returned
         // Error handled in `revalidate` by emitting an event, so only need a no-op here
-        revalidate({ cacheTime: Date.now() }).catch(() => {})
-      } else {
-        // When it is a pure cache hit, we are not revalidating, so we can remove the key from the in-flight set
-        inFlightKeys.delete(key)
-        emitter.emit(EmitterEvents.cacheInFlightSettled, { cacheKey, key })
+        revalidateOnce({ cacheTime: Date.now() }).catch(() => {})
       }
 
       return {
@@ -291,7 +301,9 @@ export function createStaleWhileRevalidateCache(
     emitter.emit(EmitterEvents.cacheMiss, { cacheKey, fn })
 
     const revalidateCacheTime = Date.now()
-    const result = await revalidate({ cacheTime: revalidateCacheTime })
+    const result = (await revalidateOnce({
+      cacheTime: revalidateCacheTime,
+    })) as Awaited<CacheValue>
 
     return {
       cachedAt: revalidateCacheTime,
