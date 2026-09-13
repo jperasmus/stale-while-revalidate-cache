@@ -322,6 +322,102 @@ describe('createStaleWhileRevalidateCache', () => {
       expect(fn2).not.toHaveBeenCalled()
     })
 
+    it('should serve a stale value immediately while a revalidation for the same key is in flight', async () => {
+      // Explicitly set minTimeToStale to 0 and maxTimeToLive to Infinity so that the cache is always stale, but never dead
+      const swr = createStaleWhileRevalidateCache({
+        ...validConfig,
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+      })
+      const key = 'stale-while-in-flight-example'
+      const value1 = 'value 1'
+      const fn1 = jest.fn(() => value1)
+      // Never settles, so the revalidation it triggers stays in flight
+      const fn2 = jest.fn(() => new Promise<string>(() => {}))
+      const fn3 = jest.fn(() => 'value 3')
+
+      await swr(key, fn1)
+
+      // Returns the stale value and leaves a revalidation in flight for the key
+      await swr(key, fn2)
+
+      // Should not be blocked by the revalidation that is still in flight
+      const result = await swr(key, fn3)
+
+      expect(result).toMatchObject({
+        value: value1,
+        status: 'stale',
+      })
+      expect(fn1).toHaveBeenCalledTimes(1)
+      expect(fn2).toHaveBeenCalledTimes(1)
+      // Deduplicated against the in-flight revalidation
+      expect(fn3).not.toHaveBeenCalled()
+    })
+
+    it('should only trigger a single revalidation for concurrent stale invocations', async () => {
+      const swr = createStaleWhileRevalidateCache({
+        ...validConfig,
+        minTimeToStale: 0,
+        maxTimeToLive: Infinity,
+      })
+      const key = 'concurrent-stale-example'
+      const value1 = 'value 1'
+      const value2 = 'value 2'
+      const fn1 = jest.fn(() => value1)
+      const fn2 = jest.fn(() => value2)
+
+      await swr(key, fn1)
+
+      const results = await Promise.all(
+        Array.from({ length: 10 }, () => swr(key, fn2))
+      )
+
+      results.forEach((result) => {
+        expect(result).toMatchObject({ value: value1, status: 'stale' })
+      })
+      expect(fn2).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not register a listener per invocation while waiting for an in-flight request', async () => {
+      const swr = createStaleWhileRevalidateCache({
+        ...validConfig,
+        minTimeToStale: 1_000,
+        maxTimeToLive: Infinity,
+      })
+      const key = 'listener-growth-example'
+      const value1 = 'value 1'
+      let resolveFn1: (value: string) => void = () => {}
+      const fn1 = jest.fn(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveFn1 = resolve
+          })
+      )
+      const fn2 = jest.fn(() => 'value 2')
+
+      const pending = swr(key, fn1)
+
+      // Give the first invocation a chance to register its in-flight revalidation
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      const waiting = Array.from({ length: 50 }, () => swr(key, fn2))
+
+      // Give the waiting invocations a chance to read the cache and start waiting
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(swr.listenerCount(EmitterEvents.cacheInFlightSettled)).toBe(0)
+
+      resolveFn1(value1)
+
+      const results = await Promise.all([pending, ...waiting])
+
+      results.forEach((result) => {
+        expect(result).toMatchObject({ value: value1 })
+      })
+      expect(fn1).toHaveBeenCalledTimes(1)
+      expect(fn2).not.toHaveBeenCalled()
+    })
+
     describe('Retry', () => {
       it('should allow retrying the request using a number of retries', async () => {
         const swr = createStaleWhileRevalidateCache({
